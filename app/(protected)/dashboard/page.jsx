@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 
 const PYTHON_BASE_URL =
   process.env.NODE_ENV === "production"
-    ? PYTHON_BASE_URL
+    ? "https://calculator.qodeinvest.com"
     : "http://localhost:5080";
 
 export default function Dashboard() {

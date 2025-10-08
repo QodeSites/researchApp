@@ -90,77 +90,79 @@ const PortfolioManager = ({portfolios, setPortfolios, onSubmit, loading = false,
     }
   };
 
-  const handlePortfolioChange = useCallback((index, updatedPortfolio) => {
-    setPortfolios((prevPortfolios) => {
-      const newPortfolios = [...prevPortfolios];
-      newPortfolios[index] = {
-        ...newPortfolios[index],
-        ...updatedPortfolio,
-      };
+const handlePortfolioChange = useCallback((index, updatedPortfolio) => {
+  setPortfolios((prevPortfolios) => {
+    const newPortfolios = [...prevPortfolios];
+    newPortfolios[index] = {
+      ...newPortfolios[index],
+      ...updatedPortfolio,
+    };
 
-      if (index === 0) {
-        const { start_date, end_date } = updatedPortfolio;
-        newPortfolios.forEach((portfolio, pIndex) => {
-          if (pIndex !== 0) {
-            newPortfolios[pIndex].start_date = start_date;
-            newPortfolios[pIndex].end_date = end_date;
-          }
-        });
-      }
-      return newPortfolios;
-    });
-  }, []);
+    if (index === 0) {
+      const { start_date, end_date } = updatedPortfolio;
+      newPortfolios.forEach((portfolio, pIndex) => {
+        if (pIndex !== 0) {
+          newPortfolios[pIndex].start_date = start_date;
+          newPortfolios[pIndex].end_date = end_date;
+        }
+      });
+    }
+    return newPortfolios;
+  });
+}, [setPortfolios]); // ADD setPortfolios here
 
   const handleAddPortfolio = useCallback(() => {
-    const newIndex = portfolios.length + 1;
-    const newPortfolio = {
-      id: Date.now(),
-      name: `Portfolio ${newIndex}`,
-      start_date: portfolios[0].start_date,
-      end_date: portfolios[0].end_date,
-      invest_amount: "",
-      cash_percent: "",
-      frequency: "yearly",
-      selected_systems: [],
-      selected_debtfunds: [],
-      benchmark: "",
-      error: "",
-    };
-    setPortfolios((prev) => [...prev, newPortfolio]);
-  }, [portfolios]);
+  const newIndex = portfolios.length + 1;
+  const newPortfolio = {
+    id: Date.now(),
+    name: `Portfolio ${newIndex}`,
+    start_date: portfolios[0].start_date,
+    end_date: portfolios[0].end_date,
+    invest_amount: "",
+    cash_percent: "",
+    frequency: "yearly",
+    selected_systems: [],
+    selected_debtfunds: [],
+    benchmark: "",
+    error: "",
+  };
+  setPortfolios((prev) => [...prev, newPortfolio]);
+}, [portfolios, setPortfolios]); // ADD setPortfolios here
 
-  const handleRemovePortfolio = useCallback(
-    (indexToRemove) => {
-      setPortfolios((prevPortfolios) => {
-        if (prevPortfolios.length === 1) return prevPortfolios;
-        const currentTabNumber = parseInt(activeKey.split("-")[1]);
-        if (indexToRemove === currentTabNumber - 1) {
-          setActiveKey(`Portfolio-${currentTabNumber - 1}`);
-        }
-        return prevPortfolios.filter((_, index) => index !== indexToRemove);
-      });
-    },
-    [activeKey]
+// Line 143 - handleRemovePortfolio
+const handleRemovePortfolio = useCallback(
+  (indexToRemove) => {
+    setPortfolios((prevPortfolios) => {
+      if (prevPortfolios.length === 1) return prevPortfolios;
+      const currentTabNumber = parseInt(activeKey.split("-")[1]);
+      if (indexToRemove === currentTabNumber - 1) {
+        setActiveKey(`Portfolio-${currentTabNumber - 1}`);
+      }
+      return prevPortfolios.filter((_, index) => index !== indexToRemove);
+    });
+  },
+  [activeKey, setPortfolios] // ADD setPortfolios here
+);
+
+// Line 163 - validatePortfolios
+const validatePortfolios = useCallback(() => {
+  let isValid = true;
+  setPortfolios((prev) =>
+    prev.map((portfolio) => {
+      let error = "";
+      const totalWeightage = [...portfolio.selected_systems].reduce(
+        (sum, item) => sum + (parseFloat(item.weightage) || 0),
+        0
+      );
+      if (Math.abs(totalWeightage - 100) > 0.1) {
+        error = "Weightages must sum to 100%.";
+        isValid = false;
+      }
+      return { ...portfolio, error };
+    })
   );
-
-  const validatePortfolios = useCallback(() => {
-    let isValid = true;
-    setPortfolios((prev) =>
-      prev.map((portfolio) => {
-        let error = "";
-        const totalWeightage = [...portfolio.selected_systems].reduce(
-          (sum, item) => sum + (parseFloat(item.weightage) || 0),
-          0
-        );
-        if (Math.abs(totalWeightage - 100) > 0.1) {
-          error = "Weightages must sum to 100%.";
-          isValid = false;
-        }
-        return { ...portfolio, error };
-      })
-    );
-    return isValid;
-  }, []);
+  return isValid;
+}, [setPortfolios]); // ADD setPortfolios here
 
   const handleSubmit = useCallback(
     async (e) => {

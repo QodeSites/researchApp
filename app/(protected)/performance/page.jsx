@@ -32,7 +32,7 @@ import allIndicesGroups from "@/utils/allIndicesGroups";
 
 const PYTHON_BASE_URL =
   process.env.NODE_ENV === "production"
-    ? PYTHON_BASE_URL
+    ? "https://calculator.qodeinvest.com"
     : "http://localhost:5080";
 
 // --- CSV Utils ---

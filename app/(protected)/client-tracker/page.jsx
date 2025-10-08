@@ -36,7 +36,7 @@ const formatNumber = (value, suffix = "") => {
 
 const PYTHON_BASE_URL =
   process.env.NODE_ENV === "production"
-    ? PYTHON_BASE_URL
+    ? "https://calculator.qodeinvest.com"
     : "http://localhost:5080"
 export default function ClientTracker() {
   const [data, setData] = useState({ portfolio_tracker: [], trailing_returns: [] })

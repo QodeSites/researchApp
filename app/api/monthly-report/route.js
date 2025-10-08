@@ -32,7 +32,7 @@ export async function GET(req) {
     let lastDayCurrMonth;
     const latestDateQuery = `
       SELECT MAX(date) as latest_date
-      FROM tblresearch_new_1
+      FROM tblresearch_new
       WHERE EXTRACT(YEAR FROM date) = $1 AND EXTRACT(MONTH FROM date) = $2
     `;
     const latestDateResult = await db.query(latestDateQuery, [
@@ -91,7 +91,7 @@ export async function GET(req) {
     // 2. Calculate Returns
     // ---------------------------
     const indicesResult = await db.query(
-      `SELECT DISTINCT indices FROM tblresearch_new_1`
+      `SELECT DISTINCT indices FROM tblresearch_new`
     );
     const indices = indicesResult.rows.map((row) => row.indices);
 
@@ -129,7 +129,7 @@ export async function GET(req) {
 
         const startQuery = `
           SELECT nav, date
-          FROM tblresearch_new_1
+          FROM tblresearch_new
           WHERE indices = $1 AND date <= $2
           ORDER BY date DESC
           LIMIT 1
@@ -138,7 +138,7 @@ export async function GET(req) {
 
         const endQuery = `
           SELECT nav, date
-          FROM tblresearch_new_1
+          FROM tblresearch_new
           WHERE indices = $1 AND date <= $2
           ORDER BY date DESC
           LIMIT 1
@@ -175,7 +175,7 @@ export async function GET(req) {
       // Since Inception
       const inceptionQuery = `
         SELECT nav, date
-        FROM tblresearch_new_1
+        FROM tblresearch_new
         WHERE indices = $1
         ORDER BY date ASC
         LIMIT 1
@@ -185,7 +185,7 @@ export async function GET(req) {
       const endResults = await db.query(
         `
         SELECT nav, date
-        FROM tblresearch_new_1
+        FROM tblresearch_new
         WHERE indices = $1 AND date <= $2
         ORDER BY date DESC
         LIMIT 1

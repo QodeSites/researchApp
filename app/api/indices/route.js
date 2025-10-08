@@ -382,14 +382,14 @@ export async function POST(req) {
     if (endDate && isNaN(endDate.getTime())) endDate = null;
 
     // Fetch all unique indexes
-    const indexQuery = `SELECT DISTINCT indices FROM tblresearch_new_1`;
+    const indexQuery = `SELECT DISTINCT indices FROM tblresearch_new`;
     const { rows: indexRows } = await db.query(indexQuery);
     const allIndices = indexRows.map((row) => row.indices);
 
     // Fetch data for all indexes
     const dataQuery = `
       SELECT indices, nav, date
-      FROM tblresearch_new_1
+      FROM tblresearch_new
       ORDER BY indices, date ASC
     `;
     const { rows } = await db.query(dataQuery);

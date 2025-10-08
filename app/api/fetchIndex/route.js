@@ -15,7 +15,7 @@ export async function GET() {
         CASE WHEN nav <= ROUND(MAX(nav) OVER (PARTITION BY indices) * 0.9, 2) THEN true ELSE false END AS dd10,
         CASE WHEN nav <= ROUND(MAX(nav) OVER (PARTITION BY indices) * 0.85, 2) THEN true ELSE false END AS dd15,
         CASE WHEN nav <= ROUND(MAX(nav) OVER (PARTITION BY indices) * 0.8, 2) THEN true ELSE false END AS dd20
-      FROM tblresearch_new_1
+      FROM tblresearch_new
       ORDER BY indices, date DESC;
     `;
 

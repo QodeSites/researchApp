@@ -75,7 +75,7 @@ const AnnualReturnsChart = ({ portfolios }) => {
           this.points.forEach((point) => {
             tooltip += `<span style="color:${point.series.color}">\u25CF</span> ${
               point.series.name
-            }: <b>${point.y !== null ? point.y.toFixed(2) + "%" : "N/A"}</b><br/>`
+            }: <b>${point.y !== null ? point.y.toFixed(2) + "%" : "-"}</b><br/>`
           })
           return tooltip
         },

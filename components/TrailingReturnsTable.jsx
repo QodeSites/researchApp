@@ -48,7 +48,7 @@ const TrailingReturnsTable = ({ portfolios }) => {
                   {periods.map((period) => {
                     const value = portfolio.result?.trailing_returns?.[period]
                     const formattedValue =
-                      value != null ? `${value.toFixed(2)}%` : "N/A"
+                      value != null ? `${value.toFixed(2)}%` : "-"
                     const color =
                       value > 0
                         ? "text-green-600"

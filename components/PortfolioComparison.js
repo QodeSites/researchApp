@@ -41,7 +41,7 @@ const PortfolioMetrics = ({ portfolios }) => {
     portfolio?.result?.additional_risk_return_metrics?.[key]
 
   const formatValue = (value, key) => {
-    if (value == null || isNaN(value)) return "N/A"
+    if (value == null || isNaN(value)) return "-"
 
     if (key === "Best Year" || key === "Worst Year") {
       return Math.round(value).toString()

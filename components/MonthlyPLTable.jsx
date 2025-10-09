@@ -37,7 +37,7 @@ function MonthlyPLTable({ portfolios }) {
 
   const renderCell = (value) => {
     const numValue = parseFloat(value)
-    const cellValue = isNaN(numValue) ? "0.0%" : `${numValue.toFixed(2)}%`
+    const cellValue = isNaN(numValue) ? "-" : `${numValue.toFixed(2)}%`
 
     let cellClass = "text-center"
     if (numValue > 4) {

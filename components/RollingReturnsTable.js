@@ -20,7 +20,7 @@ const RollingReturnsTable = ({ portfolios }) => {
 
   const renderValue = (value) => {
     if (value === null || value === undefined) {
-      return <span className="text-muted-foreground">N/A</span>
+      return <span className="text-muted-foreground">-</span>
     }
     const color = value > 0 ? "text-[#008455]" : "text-[#550e0e]"
     return <span className={`${color} font-medium`}>{value.toFixed(2)}</span>

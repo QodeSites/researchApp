@@ -333,7 +333,7 @@ function CombinedPortfolioResults({ portfolios }) {
                         <TableCell className="text-center">
                           {dd.Recovery_date !== "Not Recovered"
                             ? calculateDaysBetween(dd.Peak_date, dd.Recovery_date)
-                            : "N/A"}
+                            : "-"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -351,7 +351,7 @@ function CombinedPortfolioResults({ portfolios }) {
 
   const formatValue = (value, key) => {
     if (typeof value === "string") return value
-    if (value == null || isNaN(value)) return "N/A"
+    if (value == null || isNaN(value)) return "-"
     if (key === "Best Year" || key === "Worst Year") return Math.round(value).toString()
     const percentageMetrics = [
       "Annualized Return (CAGR)",

@@ -49,7 +49,7 @@ const performanceMetrics = [
 
 const formatValue = (value, key) => {
   if (typeof value === "string") return value
-  if (value == null || isNaN(value)) return "N/A"
+  if (value == null || isNaN(value)) return "-"
   if (key === "Best Year" || key === "Worst Year") return Math.round(value).toString()
 
   const percentageMetrics = [
@@ -119,7 +119,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
       const trailing = Object.entries(portfolio.result?.trailing_returns || {}).map(
         ([p, r]) => ({
           Period: p,
-          Return: r != null && !isNaN(r) ? `${(r * 100).toFixed(2)}%` : "N/A",
+          Return: r != null && !isNaN(r) ? `${(r * 100).toFixed(2)}%` : "-",
         })
       )
       addSheet(trailing, "Trailing Returns")
@@ -164,7 +164,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
           "Days to Recover":
             dd.Recovery_date !== "Not Recovered"
               ? calculateDaysBetween(dd.Peak_date, dd.Recovery_date)
-              : "N/A",
+              : "-",
         })) || []
       addSheet(dds, "Top Drawdowns")
     }
@@ -172,7 +172,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
     if (portfolio.result?.drawdown_data?.length) {
       const ddSeries = portfolio.result.drawdown_data.map((r) => ({
         Date: r.date,
-        "Drawdown (%)": r.Drawdown ?? r.drawdown ?? "N/A",
+        "Drawdown (%)": r.Drawdown ?? r.drawdown ?? "-",
       }))
       addSheet(ddSeries, "Drawdown Series")
     }
@@ -236,7 +236,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
       doc.setFontSize(14).text("Trailing Returns", 14, y)
       y += 10
       const data = Object.entries(portfolio.result?.trailing_returns || {}).map(
-        ([p, r]) => [p, r != null && !isNaN(r) ? `${r}%` : "N/A"]
+        ([p, r]) => [p, r != null && !isNaN(r) ? `${r}%` : "-"]
       )
       autoTable(doc, { startY: y, head: [["Period", "Return"]], body: data })
       y = doc.lastAutoTable.finalY + 10
@@ -290,7 +290,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
           dd.Recovery_date,
           dd.Recovery_date !== "Not Recovered"
             ? calculateDaysBetween(dd.Peak_date, dd.Recovery_date)
-            : "N/A",
+            : "-",
         ]) || []
       autoTable(doc, {
         startY: y,

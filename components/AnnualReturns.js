@@ -74,6 +74,7 @@ const AnnualMetricsTable = ({ portfolios }) => {
                 <TableCell className="text-center font-medium">{year}</TableCell>
                 {allMetrics.map((metrics, idx) => {
                   const yearMetric = metrics.find((m) => m.year === year)
+                  const val = isNaN(yearMetric.return) ? "-" : `${yearMetric.return.toFixed(2)}%`
                   return yearMetric ? (
                     <React.Fragment key={idx}>
                       <TableCell
@@ -85,7 +86,7 @@ const AnnualMetricsTable = ({ portfolios }) => {
                             : ""
                         }`}
                       >
-                        {yearMetric.return.toFixed(2)}
+                        {val}
                       </TableCell>
                       <TableCell className="text-center">
                         {yearMetric.balance.toLocaleString("en-IN", {
@@ -96,8 +97,8 @@ const AnnualMetricsTable = ({ portfolios }) => {
                     </React.Fragment>
                   ) : (
                     <React.Fragment key={idx}>
-                      <TableCell className="text-center">N/A</TableCell>
-                      <TableCell className="text-center">N/A</TableCell>
+                      <TableCell className="text-center">-</TableCell>
+                      <TableCell className="text-center">-</TableCell>
                     </React.Fragment>
                   )
                 })}

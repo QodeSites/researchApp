@@ -157,7 +157,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
     if (selectedComponents.drawdownsTable) {
       const dds =
         portfolio.result?.top_10_worst_drawdowns?.slice(0, 5).map((dd) => ({
-          "Drawdown (%)": dd.Drawdown.toFixed(1),
+          "Drawdown (%)": dd.Drawdown.toFixed(2),
           "Peak Date": dd.Peak_date,
           "Bottom Date": dd.Drawdown_date,
           "Recovery Date": dd.Recovery_date,
@@ -284,7 +284,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
       y += 10
       const data =
         portfolio.result?.top_10_worst_drawdowns?.slice(0, 5).map((dd) => [
-          dd.Drawdown.toFixed(1),
+          dd.Drawdown.toFixed(2),
           dd.Peak_date,
           dd.Drawdown_date,
           dd.Recovery_date,

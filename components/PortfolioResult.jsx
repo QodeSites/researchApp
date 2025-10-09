@@ -325,7 +325,7 @@ function CombinedPortfolioResults({ portfolios }) {
                             dd.Drawdown < 0 ? "text-red-600" : ""
                           }`}
                         >
-                          {dd.Drawdown.toFixed(1)}
+                          {dd.Drawdown.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-center">{dd.Peak_date}</TableCell>
                         <TableCell className="text-center">{dd.Drawdown_date}</TableCell>

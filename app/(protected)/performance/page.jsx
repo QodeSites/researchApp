@@ -242,15 +242,16 @@ export default function IndicesComparisonPage() {
   const renderTable = (columns) => (
     <Table className="border bg-background rounded-lg">
       <TableHeader className="bg-primary text-white font-bold">
-        <TableRow>
+        <TableRow className="bg-primary text-white font-bold">
           <TableHead
-            className="cursor-pointer"
+            className="bg-primary text-white font-bold cursor-pointer"
             onClick={() => setSortConfig({ key: "#", direction: "asc" })}
           >
             #
           </TableHead>
           <TableHead>
             <Checkbox
+              className= "bg-primary text-white font-bold cursor-pointer"
               checked={selectedIndices.length === sorted.length && sorted.length > 0}
               onCheckedChange={() =>
                 setSelectedIndices(
@@ -261,12 +262,12 @@ export default function IndicesComparisonPage() {
               }
             />
           </TableHead>
-          <TableHead>Index</TableHead>
-          <TableHead>Category</TableHead>
+          <TableHead className="bg-primary text-white font-bold" >Index</TableHead>
+          <TableHead className="bg-primary text-white font-bold" >Category</TableHead>
           {columns.map((col) => (
             <TableHead
               key={col}
-              className="cursor-pointer"
+              className="bg-primary text-white font-bold cursor-pointer"
               onClick={() =>
                 setSortConfig((prev) => ({
                   key: col,

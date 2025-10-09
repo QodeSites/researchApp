@@ -1,15 +1,14 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
-import { ArrowUp, ArrowDown, Info } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import formatDate from "@/utils/formatDate";
-import { formatCurrency } from "@/utils/formatCurrency";
+import allIndicesGroups from "@/utils/allIndicesGroups";
 
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -24,15 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Loader2 } from "lucide-react";
-import allIndicesGroups from "@/utils/allIndicesGroups"
 
 const IndexTable = () => {
   const [data, setData] = useState([]);
@@ -42,56 +32,58 @@ const IndexTable = () => {
 
   const [selectedGroup, setSelectedGroup] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState("table");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [indexedData, setIndexedData] = useState([]); // ✅ Fixed index assignment
 
-  
-  const segregateIndices = (rawData) => {
-    const dataMap = new Map(rawData.map((item) => [item.indices, item]));
-    const combined = [];
-    for (const [category, indices] of Object.entries(allIndicesGroups)) {
-      indices.forEach((index) => {
-        const item = dataMap.get(index);
-        if (item) {
-          combined.push({ ...item, category });
-        } else {
-          combined.push({
-            indices: index,
-            nav: "N/A",
-            currentDD: "N/A",
-            peak: "N/A",
-            dd10: false,
-            dd15: false,
-            dd20: false,
-            category,
-          });
-        }
-      });
-    }
-    return combined;
-  };
-
+  // --- Fetch Data ---
   const fetchIndices = async () => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/fetchIndex");
       const result = await response.json();
+
       if (Array.isArray(result.data)) {
         const latestDate =
           result.data.length > 0
             ? formatDate(result.data[0].date || result.date || new Date())
             : formatDate(new Date());
         setDate(latestDate);
-        setData(
-          result.data.map((item) => ({
-            ...item,
-            indices: item.indices || "N/A",
-            nav: typeof item.nav === "number" ? item.nav : "N/A",
-            peak: typeof item.peak === "number" ? item.peak : "N/A",
-            currentDD:
-              typeof item.currentDD === "number" ? `${item.currentDD}%` : "N/A",
-          }))
-        );
+
+        // Normalize incoming data
+        const normalized = result.data.map((item) => ({
+          ...item,
+          indices: item.indices || "N/A",
+          nav: typeof item.nav === "number" ? item.nav : "N/A",
+          peak: typeof item.peak === "number" ? item.peak : "N/A",
+          currentDD:
+            typeof item.currentDD === "number"
+              ? `${item.currentDD}%`
+              : "N/A",
+        }));
+
+        // ✅ Assign fixed global idx once based on allIndicesGroups order
+        const allIndices = Object.values(allIndicesGroups).flat();
+        const combined = allIndices.map((index, idx) => {
+          const category =
+            Object.keys(allIndicesGroups).find((g) =>
+              allIndicesGroups[g].includes(index)
+            ) || "Other";
+          const found = normalized.find((item) => item.indices === index);
+          return {
+            idx: idx + 1,
+            category,
+            indices: index,
+            nav: found?.nav ?? "N/A",
+            currentDD: found?.currentDD ?? "N/A",
+            peak: found?.peak ?? "N/A",
+            dd10_value: found?.dd10_value ?? "",
+            dd15_value: found?.dd15_value ?? "",
+            dd20_value: found?.dd20_value ?? "",
+          };
+        });
+
+        setData(combined);
+        setIndexedData(combined);
       } else {
         setError("Invalid data structure");
       }
@@ -106,25 +98,45 @@ const IndexTable = () => {
     fetchIndices();
   }, []);
 
-  // Helper function for sorting
+  // --- Sorting helper ---
   const getSortedData = (dataArray) => {
     const { key, direction } = sortConfig;
-    if (!key) return dataArray;
+    if (!key || key === "#") return [...dataArray].sort((a, b) => a.idx - b.idx);
+
     return [...dataArray].sort((a, b) => {
       let aValue = a[key],
         bValue = b[key];
-      
-      // Handle special cases for currentDD (remove % and convert to number)
+
       if (key === "currentDD") {
-        aValue = typeof aValue === "string" ? parseFloat(aValue.replace("%", "")) : aValue;
-        bValue = typeof bValue === "string" ? parseFloat(bValue.replace("%", "")) : bValue;
+        aValue =
+          typeof aValue === "string"
+            ? parseFloat(aValue.replace("%", ""))
+            : aValue;
+        bValue =
+          typeof bValue === "string"
+            ? parseFloat(bValue.replace("%", ""))
+            : bValue;
       }
-      
-      if (aValue === "-" || aValue === "N/A" || aValue === undefined || aValue === null) aValue = null;
-      if (bValue === "-" || bValue === "N/A" || bValue === undefined || bValue === null) bValue = null;
+
+      if (
+        aValue === "-" ||
+        aValue === "N/A" ||
+        aValue === undefined ||
+        aValue === null
+      )
+        aValue = null;
+      if (
+        bValue === "-" ||
+        bValue === "N/A" ||
+        bValue === undefined ||
+        bValue === null
+      )
+        bValue = null;
+
       if (aValue === null && bValue === null) return 0;
       if (aValue === null) return 1;
       if (bValue === null) return -1;
+
       if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
         return direction === "asc"
           ? parseFloat(aValue) - parseFloat(bValue)
@@ -136,29 +148,34 @@ const IndexTable = () => {
     });
   };
 
-  const sortedData = useMemo(() => {
-    const combined = segregateIndices(data);
+  const filteredData = useMemo(() => {
     const filteredByGroup =
       selectedGroup === "All"
-        ? combined
-        : combined.filter((item) => item.category === selectedGroup);
-    const filtered = filteredByGroup.filter((item) =>
+        ? indexedData
+        : indexedData.filter((item) => item.category === selectedGroup);
+
+    const filteredBySearch = filteredByGroup.filter((item) =>
       item.indices.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    return getSortedData(filtered);
-  }, [data, selectedGroup, searchTerm, sortConfig]);
 
+    return getSortedData(filteredBySearch);
+  }, [indexedData, selectedGroup, searchTerm, sortConfig]);
+
+  // --- Export Excel ---
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
-    const transformedData = sortedData.map((item, i) => ({
-      "S.No": i + 1,
+    const transformed = filteredData.map((item) => ({
+      "#": item.idx,
       Indices: item.indices,
       Category: item.category,
       "Current NAV": item.nav,
       "Current DD": item.currentDD,
       Peak: item.peak,
+      "10% DD": item.dd10_value,
+      "15% DD": item.dd15_value,
+      "20% DD": item.dd20_value,
     }));
-    const worksheet = XLSX.utils.json_to_sheet(transformedData);
+    const worksheet = XLSX.utils.json_to_sheet(transformed);
     XLSX.utils.book_append_sheet(workbook, worksheet, "Indices");
     const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     saveAs(new Blob([wbout]), "Indices.xlsx");
@@ -204,16 +221,18 @@ const IndexTable = () => {
       </div>
 
       {/* Table */}
-      {/* Table */}
       <div className="rounded-lg border">
         <Table className="border bg-background rounded-lg">
           <TableHeader className="bg-primary text-white font-bold">
-            <TableRow className="bg-primary text-white font-bold">
-              <TableHead className="bg-primary text-white font-bold">
-                S.No
+            <TableRow>
+              <TableHead
+                className="bg-primary text-white font-bold cursor-pointer" 
+                onClick={() => setSortConfig({ key: "#", direction: "asc" })}
+              >
+                #
               </TableHead>
-              <TableHead 
-                className="bg-primary text-white font-bold cursor-pointer"
+              <TableHead
+                className="cursor-pointer text-white font-bold"
                 onClick={() =>
                   setSortConfig((prev) => ({
                     key: "indices",
@@ -231,8 +250,8 @@ const IndexTable = () => {
                     : " ▼"
                   : ""}
               </TableHead>
-              <TableHead 
-                className="bg-primary text-white font-bold cursor-pointer"
+              <TableHead
+                className="cursor-pointer text-white font-bold"
                 onClick={() =>
                   setSortConfig((prev) => ({
                     key: "category",
@@ -250,8 +269,8 @@ const IndexTable = () => {
                     : " ▼"
                   : ""}
               </TableHead>
-              <TableHead 
-                className="bg-primary text-white font-bold cursor-pointer"
+              <TableHead
+                className="cursor-pointer text-white font-bold"
                 onClick={() =>
                   setSortConfig((prev) => ({
                     key: "nav",
@@ -272,8 +291,8 @@ const IndexTable = () => {
                   <span className="block text-xs text-white">({date})</span>
                 )}
               </TableHead>
-              <TableHead 
-                className="bg-primary text-white font-bold cursor-pointer"
+              <TableHead
+                className="cursor-pointer text-white font-bold"
                 onClick={() =>
                   setSortConfig((prev) => ({
                     key: "currentDD",
@@ -291,8 +310,8 @@ const IndexTable = () => {
                     : " ▼"
                   : ""}
               </TableHead>
-              <TableHead 
-                className="bg-primary text-white font-bold cursor-pointer"
+              <TableHead
+                className="cursor-pointer text-white font-bold"
                 onClick={() =>
                   setSortConfig((prev) => ({
                     key: "peak",
@@ -310,68 +329,33 @@ const IndexTable = () => {
                     : " ▼"
                   : ""}
               </TableHead>
-              <TableHead 
-                className="bg-primary text-white font-bold cursor-pointer"
-                onClick={() =>
-                  setSortConfig((prev) => ({
-                    key: "dd10_value",
-                    direction:
-                      prev.key === "dd10_value" && prev.direction === "asc"
-                        ? "desc"
-                        : "asc",
-                  }))
-                }
-              >
-                10% DD
-                {sortConfig.key === "dd10_value"
-                  ? sortConfig.direction === "asc"
-                    ? " ▲"
-                    : " ▼"
-                  : ""}
-              </TableHead>
-              <TableHead 
-                className="bg-primary text-white font-bold cursor-pointer"
-                onClick={() =>
-                  setSortConfig((prev) => ({
-                    key: "dd15_value",
-                    direction:
-                      prev.key === "dd15_value" && prev.direction === "asc"
-                        ? "desc"
-                        : "asc",
-                  }))
-                }
-              >
-                15% DD
-                {sortConfig.key === "dd15_value"
-                  ? sortConfig.direction === "asc"
-                    ? " ▲"
-                    : " ▼"
-                  : ""}
-              </TableHead>
-              <TableHead 
-                className="bg-primary text-white font-bold cursor-pointer"
-                onClick={() =>
-                  setSortConfig((prev) => ({
-                    key: "dd20_value",
-                    direction:
-                      prev.key === "dd20_value" && prev.direction === "asc"
-                        ? "desc"
-                        : "asc",
-                  }))
-                }
-              >
-                20% DD
-                {sortConfig.key === "dd20_value"
-                  ? sortConfig.direction === "asc"
-                    ? " ▲"
-                    : " ▼"
-                  : ""}
-              </TableHead>
+              {["dd10_value", "dd15_value", "dd20_value"].map((key, i) => (
+                <TableHead
+                  key={key}
+                  className="cursor-pointer text-white font-bold"
+                  onClick={() =>
+                    setSortConfig((prev) => ({
+                      key,
+                      direction:
+                        prev.key === key && prev.direction === "asc"
+                          ? "desc"
+                          : "asc",
+                    }))
+                  }
+                >
+                  {10 + 5 * i}% DD
+                  {sortConfig.key === key
+                    ? sortConfig.direction === "asc"
+                      ? " ▲"
+                      : " ▼"
+                    : ""}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
+
           <TableBody>
-            {sortedData.map((item, i) => {
-              // Extract numeric DD (strip % if string)
+            {filteredData.map((item) => {
               const numericDD =
                 typeof item.currentDD === "string"
                   ? parseFloat(item.currentDD.replace("%", ""))
@@ -379,48 +363,23 @@ const IndexTable = () => {
 
               return (
                 <TableRow key={item.indices}>
-                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{item.idx}</TableCell>
                   <TableCell>{item.indices}</TableCell>
-                  <TableCell>
-                    {item.category}
-                  </TableCell>
-                  <TableCell>
-                    {item.nav !== "N/A" ? (item.nav) : "N/A"}
-                  </TableCell>
+                  <TableCell>{item.category}</TableCell>
+                  <TableCell>{item.nav}</TableCell>
                   <TableCell>{item.currentDD}</TableCell>
-                  <TableCell>
-                    {item.peak !== "N/A" ? (item.peak) : "N/A"}
-                  </TableCell>
-                  {/* 10% DD */}
-                  <TableCell
-                    className={
-                      numericDD <= -10 ? "text-green-600 font-medium" : ""
-                    }
-                  >
-                    {numericDD <= -10
-                      ? "Done"
-                      : (item?.dd10_value)}
-                  </TableCell>
-                  {/* 15% DD */}
-                  <TableCell
-                    className={
-                      numericDD <= -15 ? "text-green-600 font-medium" : ""
-                    }
-                  >
-                    {numericDD <= -15
-                      ? "Done"
-                      : (item?.dd15_value)}
-                  </TableCell>
-                  {/* 20% DD */}
-                  <TableCell
-                    className={
-                      numericDD <= -20 ? "text-green-600 font-medium" : ""
-                    }
-                  >
-                    {numericDD <= -20
-                      ? "Done"
-                      : (item?.dd20_value)}
-                  </TableCell>
+                  <TableCell>{item.peak}</TableCell>
+
+                  {[10, 15, 20].map((dd) => (
+                    <TableCell
+                      key={dd}
+                      className={
+                        numericDD <= -dd ? "text-green-600 font-medium" : ""
+                      }
+                    >
+                      {numericDD <= -dd ? "Done" : item[`dd${dd}_value`]}
+                    </TableCell>
+                  ))}
                 </TableRow>
               );
             })}

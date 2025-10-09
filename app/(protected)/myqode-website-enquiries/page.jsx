@@ -163,7 +163,7 @@ export default function TicketsPage() {
           ) : error ? (
             <div className="text-red-600 bg-red-100 p-3 rounded">{error}</div>
           ) : (
-            <Table className="bg-background rounded-lg text-white font-bold">
+            <Table className="bg-background rounded-lg font-bold">
               <TableHeader className="bg-primary rounded-lg text-white font-bold">
                 <TableRow>
                   {COLUMNS.map((c) => (

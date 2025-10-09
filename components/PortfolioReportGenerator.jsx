@@ -146,9 +146,9 @@ export default function PortfolioReportGenerator({ portfolios }) {
         const { Year, Total, ...months } = y
         const row = { Year }
         MONTHS.forEach((m) => {
-          row[m] = months[m] != null ? months[m].toFixed(2) : "0.0"
+          row[m] = months[m] != null ? months[m].toFixed(2) : "0.00"
         })
-        row.Total = Total != null ? Total.toFixed(2) : "0.0"
+        row.Total = Total != null ? Total.toFixed(2) : "0.00"
         return row
       })
       addSheet(monthly, "Monthly P&L")
@@ -226,7 +226,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
       y += 10
       const data = (portfolio.result?.annual_returns || []).map((x) => [
         x.year,
-        `${x.return}%`,
+        `${x.return.toFixed(2)}%`,
       ])
       autoTable(doc, { startY: y, head: [["Year", "Return"]], body: data })
       y = doc.lastAutoTable.finalY + 10
@@ -236,7 +236,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
       doc.setFontSize(14).text("Trailing Returns", 14, y)
       y += 10
       const data = Object.entries(portfolio.result?.trailing_returns || {}).map(
-        ([p, r]) => [p, r != null && !isNaN(r) ? `${r}%` : "-"]
+        ([p, r]) => [p, r != null && !isNaN(r) ? `${r.toFixed(2)}%` : "-"]
       )
       autoTable(doc, { startY: y, head: [["Period", "Return"]], body: data })
       y = doc.lastAutoTable.finalY + 10
@@ -267,8 +267,8 @@ export default function PortfolioReportGenerator({ portfolios }) {
         const { Year, Total, ...months } = y
         return [
           Year,
-          ...MONTHS.map((m) => (months[m] != null ? months[m].toFixed(1) : "0.00")),
-          Total != null ? Total.toFixed(1) : "0.00",
+          ...MONTHS.map((m) => (months[m] != null ? months[m].toFixed(2) : "0.00")),
+          Total != null ? Total.toFixed(2) : "0.00",
         ]
       })
       autoTable(doc, {

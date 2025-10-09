@@ -31,112 +31,23 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
+import allIndicesGroups from "@/utils/allIndicesGroups";
 import { Check } from "lucide-react";
+function flattenIndices(groups) {
+  return Object.entries(groups).flatMap(([group, values]) =>
+    values.map(value => ({
+      label: value.replace(/-/g, ' '), // or keep original name
+      value,
+      group
+    }))
+  );
+}
 
+const flattenedList = flattenIndices(allIndicesGroups);
 // -------------------- Strategies + DebtFunds --------------------
-const STRATEGIES = [
-  { label: "Qode All Weather", value: "QAW", group: "Qode Strategies" },
-  { label: "Qode Growth Fund", value: "QGF", group: "Qode Strategies" },
-  { label: "Qode All Weather - 1", value: "QAW1", group: "Qode Strategies" },
-  { label: "Qode Tactical Fund", value: "QTF", group: "Qode Strategies" },
-  { label: "NSE Momentum Index", value: "NSE Momentum Index", group: "Index" },
-  { label: "NIFTY METAL", value: "NIFTY METAL", group: "Index" },
-  { label: "NIFTY INFRA", value: "NIFTY INFRA", group: "Index" },
-  { label: "BSE500 TRI", value: "BSE500TRI", group: "Index" },
-  { label: "NIFTY MNC", value: "NIFTY MNC", group: "Index" },
-  { label: "NIFTY ENERGY", value: "NIFTY ENERGY", group: "Index" },
-  { label: "NIFTY CONSR DURBL", value: "NIFTY CONSR DURBL", group: "Index" },
-  { label: "NIFTY CONSUMPTION", value: "NIFTY CONSUMPTION", group: "Index" },
-  { label: "NIFTY 50", value: "NIFTY 50", group: "Index" },
-  { label: "NIFTY IT", value: "NIFTY IT", group: "Index" },
-  { label: "NIFTY COMMODITIES", value: "NIFTY COMMODITIES", group: "Index" },
-  { label: "NIFTY AUTO", value: "NIFTY AUTO", group: "Index" },
-  { label: "NIFTY PVT BANK", value: "NIFTY PVT BANK", group: "Index" },
-  { label: "NIFTY MICROCAP250", value: "NIFTY MICROCAP250", group: "Index" },
-  { label: "BSE500", value: "BSE500", group: "Index" },
-  { label: "NIFTY MEDIA", value: "NIFTY MEDIA", group: "Index" },
-  { label: "NIFTY CPSE", value: "NIFTY CPSE", group: "Index" },
-  { label: "NIFTY PSU BANK", value: "NIFTY PSU BANK", group: "Index" },
-  { label: "NIFTY PHARMA", value: "NIFTY PHARMA", group: "Index" },
-  { label: "NIFTY BANK", value: "NIFTY BANK", group: "Index" },
-  { label: "NIFTY FMCG", value: "NIFTY FMCG", group: "Index" },
-  { label: "NIFTY HEALTHCARE", value: "NIFTY HEALTHCARE", group: "Index" },
-  { label: "NIFTY SMLCAP 250", value: "NIFTY SMLCAP 250", group: "Index" },
-  { label: "NIFTY MIDCAP 100", value: "NIFTY MIDCAP 100", group: "Index" },
-  { label: "NIFTY REALTY", value: "NIFTY REALTY", group: "Index" },
-  {
-    label: "NSE Momentum + Qode (Puts)",
-    value: "Equity + Puts",
-    group: "Qode Derivatives Portfolio",
-  },
-  {
-    label: "NSE Momentum + Qode (Puts + Calls)",
-    value: "Equity + Puts + Calls",
-    group: "Qode Derivatives Portfolio",
-  },
-  { label: "QGFLong", value: "QGFLong" },
-  { label: "Shortflat", value: "Shortflat" },
-  { label: "LongOpt", value: "LongOpt" },
-  { label: "GOLDBEES", value: "GOLDBEES", group: "Index" },
-  { label: "Nifty + Puts", value: "nifty+puts", group: "Index" },
-  { label: "QFH", value: "QFH", group: "Qode Strategies" },
-  { label: "NIFTYM150MOMNTM50", value: "NIFTYM150MOMNTM50", group: "Index" },
-  { label: "NIFTY100 LOWVOL30", value: "NIFTY100 LOWVOL30", group: "Index" },
-  { label: "NIFTY200MOMENTM30", value: "NIFTY200MOMENTM30", group: "Index" },
-];
+const STRATEGIES = flattenedList
 
-const DEBTFUNDS = [
-  { label: "Qode All Weather", value: "QAW", group: "Qode Strategies" },
-  { label: "Qode Growth Fund", value: "QGF", group: "Qode Strategies" },
-  { label: "Qode All Weather - 1", value: "QAW1", group: "Qode Strategies" },
-  { label: "Qode Tactical Fund", value: "QVF", group: "Qode Strategies" },
-  { label: "NSE Momentum Index", value: "NSE Momentum Index", group: "Index" },
-  { label: "NIFTY METAL", value: "NIFTY METAL", group: "Index" },
-  { label: "NIFTY INFRA", value: "NIFTY INFRA", group: "Index" },
-  { label: "NIFTY MNC", value: "NIFTY MNC", group: "Index" },
-  { label: "NIFTY ENERGY", value: "NIFTY ENERGY", group: "Index" },
-  { label: "NIFTY CONSR DURBL", value: "NIFTY CONSR DURBL", group: "Index" },
-  { label: "NIFTY CONSUMPTION", value: "NIFTY CONSUMPTION", group: "Index" },
-  { label: "NIFTY 50", value: "NIFTY 50", group: "Index" },
-  { label: "NIFTY IT", value: "NIFTY IT", group: "Index" },
-  { label: "NIFTY COMMODITIES", value: "NIFTY COMMODITIES", group: "Index" },
-  { label: "BSE500 TRI", value: "BSE500TRI", group: "Index" },
-  { label: "NIFTY AUTO", value: "NIFTY AUTO", group: "Index" },
-  { label: "NIFTY PVT BANK", value: "NIFTY PVT BANK", group: "Index" },
-  { label: "NIFTY MICROCAP250", value: "NIFTY MICROCAP250", group: "Index" },
-  { label: "BSE500", value: "BSE500", group: "Index" },
-  { label: "NIFTY MEDIA", value: "NIFTY MEDIA", group: "Index" },
-  { label: "NIFTY CPSE", value: "NIFTY CPSE", group: "Index" },
-  { label: "NIFTY PSU BANK", value: "NIFTY PSU BANK", group: "Index" },
-  { label: "NIFTY PHARMA", value: "NIFTY PHARMA", group: "Index" },
-  { label: "NIFTY BANK", value: "NIFTY BANK", group: "Index" },
-  { label: "NIFTY FMCG", value: "NIFTY FMCG", group: "Index" },
-  { label: "NIFTY HEALTHCARE", value: "NIFTY HEALTHCARE", group: "Index" },
-  { label: "NIFTY SMLCAP 250", value: "NIFTY SMLCAP 250", group: "Index" },
-  { label: "NIFTY MIDCAP 100", value: "NIFTY MIDCAP 100", group: "Index" },
-  { label: "NIFTY REALTY", value: "NIFTY REALTY", group: "Index" },
-  {
-    label: "NSE Momentum + Qode (Puts)",
-    value: "Equity + Puts",
-    group: "Qode Derivatives Portfolio",
-  },
-  {
-    label: "NSE Momentum + Qode (Puts + Calls)",
-    value: "Equity + Puts + Calls",
-    group: "Qode Derivatives Portfolio",
-  },
-  { label: "QGFLong", value: "QGFLong" },
-  { label: "Shortflat", value: "Shortflat" },
-  { label: "LongOpt", value: "LongOpt" },
-  { label: "GOLDBEES", value: "GOLDBEES", group: "Index" },
-  { label: "QFH", value: "QFH", group: "Qode Strategies" },
-  { label: "NIFTYM150MOMNTM50", value: "NIFTYM150MOMNTM50", group: "Index" },
-  { label: "NIFTY100 LOWVOL30", value: "NIFTY100 LOWVOL30", group: "Index" },
-  { label: "NIFTY200MOMENTM30", value: "NIFTY200MOMENTM30", group: "Index" },
-  { label: "Nifty + Puts", value: "nifty+puts", group: "Index" },
-  { label: "QTF", value: "QTF", group: "Qode Strategies" },
-];
+const DEBTFUNDS = flattenedList
 
 function DatePickerField({ date, onChange, placeholder, disabled = false }) {
   return (
@@ -635,7 +546,7 @@ const PortfolioCalculatorForm = ({
         <BenchmarkSelect
           value={portfolioData.benchmark || ""}
           onChange={(val) => handleInputChange("benchmark", val)}
-          options={benchmarkOptions}
+           options={Array.isArray(flattenedList) ? flattenedList : []}
           disabled={isBenchmarkDisabled}
         />
 

@@ -33,10 +33,11 @@ import {
 } from "@/components/ui/popover";
 import allIndicesGroups from "@/utils/allIndicesGroups";
 import { Check } from "lucide-react";
+
 function flattenIndices(groups) {
   return Object.entries(groups).flatMap(([group, values]) =>
     values.map(value => ({
-      label: value.replace(/-/g, ' '), // or keep original name
+      label: value.replace(/-/g, ' '),
       value,
       group
     }))
@@ -44,18 +45,13 @@ function flattenIndices(groups) {
 }
 
 const flattenedList = flattenIndices(allIndicesGroups);
-// -------------------- Strategies + DebtFunds --------------------
-const STRATEGIES = flattenedList
-
-const DEBTFUNDS = flattenedList
+const STRATEGIES = flattenedList;
+const DEBTFUNDS = flattenedList;
 
 function DatePickerField({ date, onChange, placeholder, disabled = false }) {
   return (
     <div className="relative w-full">
-      {/* Left Icon */}
       <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-
-      {/* Input */}
       <DatePicker
         selected={date}
         onChange={onChange}
@@ -85,6 +81,10 @@ function MultiSelect({ options, selectedValues, onChange, placeholder }) {
     }
   };
 
+  const handleRemove = (value) => {
+    onChange(selectedValues.filter((v) => v !== value));
+  };
+
   const selectedOptions = options.filter((o) => selectedValues.includes(o.value));
 
   return (
@@ -101,11 +101,21 @@ function MultiSelect({ options, selectedValues, onChange, placeholder }) {
               selectedOptions.map((opt) => (
                 <span
                   key={opt.value}
-                  className="px-2 py-0.5 bg-muted/70 rounded border border-border text-xs font-medium truncate"
+                  className="flex items-center gap-1 px-2 py-0.5 bg-muted/70 rounded border border-border text-xs font-medium truncate"
                   style={{ width: 'auto', maxWidth: '100%' }}
                   title={opt.label}
                 >
-                  {opt.label}
+                  <span>{opt.label}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemove(opt.value);
+                    }}
+                    className="text-muted-foreground hover:text-destructive font-bold text-sm ml-1"
+                  >
+                    ×
+                  </button>
                 </span>
               ))
             ) : (
@@ -206,7 +216,6 @@ function BenchmarkSelect({ value, onChange, placeholder = "Select benchmark", op
   );
 }
 
-
 // -------------------- PortfolioCalculatorForm --------------------
 const PortfolioCalculatorForm = ({
   index,
@@ -251,6 +260,34 @@ const PortfolioCalculatorForm = ({
       isJsonColumn: true,
     })),
   ];
+
+  // FIXED: Moved handleMultiSelectChange inside the component
+  const handleMultiSelectChange = (type, newSelected) => {
+    const weight = newSelected.length ? 100 / newSelected.length : 0;
+
+    if (type === "selected_systems") {
+      const updatedSystems = newSelected.map((val) => ({
+        system: val,
+        weightage: parseFloat(weight.toFixed(6)),
+        leverage: "1",
+        column: "",
+      }));
+      onChange(index, {
+        ...portfolioData,
+        selected_systems: updatedSystems,
+      });
+    } else if (type === "selected_debtfunds") {
+      const updatedDebtFunds = newSelected.map((val) => ({
+        debtfund: val,
+        weightage: parseFloat(weight.toFixed(6)),
+        leverage: "1",
+      }));
+      onChange(index, {
+        ...portfolioData,
+        selected_debtfunds: updatedDebtFunds,
+      });
+    }
+  };
 
   const handleClearBenchmark = () => {
     onChange(index, { ...portfolioData, benchmark: null });
@@ -378,26 +415,16 @@ const PortfolioCalculatorForm = ({
             Clear All
           </Button>
         </div>
+
         <MultiSelect
           options={combinedStrategies}
           selectedValues={(portfolioData.selected_systems || []).map(
             (s) => s.system
           )}
-          onChange={(newSelected) => {
-            const weight = newSelected.length ? 100 / newSelected.length : 0;
-            const updatedSystems = newSelected.map((val) => ({
-              system: val,
-              weightage: parseFloat(weight.toFixed(6)),
-              leverage: "1",
-              column: "",
-            }));
-            onChange(index, {
-              ...portfolioData,
-              selected_systems: updatedSystems,
-            });
-          }}
+          onChange={(newSelected) => handleMultiSelectChange("selected_systems", newSelected)}
           placeholder="Select strategies"
         />
+
         {portfolioData.selected_systems?.map((system, sIndex) => (
           <div
             key={sIndex}
@@ -467,20 +494,10 @@ const PortfolioCalculatorForm = ({
           selectedValues={(portfolioData.selected_debtfunds || []).map(
             (d) => d.debtfund
           )}
-          onChange={(newSelected) => {
-            const weight = newSelected.length ? 100 / newSelected.length : 0;
-            const updatedDebtFunds = newSelected.map((val) => ({
-              debtfund: val,
-              weightage: parseFloat(weight.toFixed(6)),
-              leverage: "1",
-            }));
-            onChange(index, {
-              ...portfolioData,
-              selected_debtfunds: updatedDebtFunds,
-            });
-          }}
+          onChange={(newSelected) => handleMultiSelectChange("selected_debtfunds", newSelected)}
           placeholder="Select debt funds"
         />
+
         {portfolioData.selected_debtfunds?.map((fund, dIndex) => (
           <div
             key={dIndex}
@@ -546,10 +563,9 @@ const PortfolioCalculatorForm = ({
         <BenchmarkSelect
           value={portfolioData.benchmark || ""}
           onChange={(val) => handleInputChange("benchmark", val)}
-           options={Array.isArray(flattenedList) ? flattenedList : []}
+          options={Array.isArray(flattenedList) ? flattenedList : []}
           disabled={isBenchmarkDisabled}
         />
-
       </div>
 
       {/* Investment Period */}

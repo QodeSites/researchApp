@@ -10,67 +10,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import PortfolioCalculatorForm from "./PortfolioCalculatorForm";
 
-const PortfolioManager = ({portfolios, setPortfolios, onSubmit, loading = false, columns = [] }) => {
+const PortfolioManager = ({handleClearFile, handleFileUpload, fileLoading, globalError, setGlobalError, customFile, customColumns, setCustomColumns, portfolios, setPortfolios, onSubmit, loading = false, columns = [] }) => {
   
   const [activeKey, setActiveKey] = useState("Portfolio-1");
-  const [globalError, setGlobalError] = useState("");
-  const [customFile, setCustomFile] = useState(null);
-  const [customColumns, setCustomColumns] = useState([]);
-  const [fileLoading, setFileLoading] = useState(false);
-
-  const handleFileUpload = (file) => {
-    setFileLoading(true);
-    setCustomFile(file);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const csvData = event.target.result;
-        const lines = csvData.split("\n").filter((line) => line.trim() !== "");
-
-        if (lines.length === 0) {
-          setGlobalError("CSV file is empty");
-          setFileLoading(false);
-          return;
-        }
-
-        const headers = lines[0].split(",").map((header) => {
-          const trimmedHeader = header.trim();
-          return trimmedHeader.toLowerCase() === "date"
-            ? "date"
-            : trimmedHeader.charAt(0).toUpperCase() +
-                trimmedHeader.slice(1).toLowerCase();
-        });
-
-        if (!headers.includes("date")) {
-          setGlobalError("CSV must contain a 'date' column");
-          setFileLoading(false);
-          return;
-        }
-
-        const newColumns = headers.filter((h) => h !== "date");
-        setCustomColumns(newColumns);
-      } catch (error) {
-        setGlobalError("Error processing CSV file");
-        console.error("CSV processing error:", error);
-      } finally {
-        setFileLoading(false);
-      }
-    };
-
-    reader.onerror = () => {
-      setGlobalError("Error reading file");
-      setFileLoading(false);
-    };
-
-    reader.readAsText(file);
-  };
-
-  const handleClearFile = () => {
-    setCustomFile(null);
-    setCustomColumns([]);
-    setGlobalError("");
-  };
+  
 
   const handleColumnsUpdate = useCallback((newColumns) => {
     setCustomColumns((prevColumns) => {

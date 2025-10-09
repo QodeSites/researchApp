@@ -34,6 +34,103 @@ const PortfolioIndex = () => {
   const [resultData, setResultData] = useState([]);
   const [activeTab, setActiveTab] = useState("input");
 
+
+  const [fileLoading, setFileLoading] = useState(false);
+  const [globalError, setGlobalError] = useState("");
+  const [customFile, setCustomFile] = useState(null);
+  const [customColumns, setCustomColumns] = useState([]);
+  
+  const handleFileUpload = (file) => {
+    setFileLoading(true);
+    setCustomFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const csvData = event.target.result;
+        const lines = csvData.split("\n").filter((line) => line.trim() !== "");
+
+        if (lines.length === 0) {
+          setGlobalError("CSV file is empty");
+          setFileLoading(false);
+          return;
+        }
+
+        const headers = lines[0].split(",").map((header) => {
+          const trimmedHeader = header.trim();
+          return trimmedHeader.toLowerCase() === "date"
+            ? "date"
+            : trimmedHeader.charAt(0).toUpperCase() +
+                trimmedHeader.slice(1).toLowerCase();
+        });
+
+        if (!headers.includes("date")) {
+          setGlobalError("CSV must contain a 'date' column");
+          setFileLoading(false);
+          return;
+        }
+
+        const newColumns = headers.filter((h) => h !== "date");
+        setCustomColumns(newColumns);
+      } catch (error) {
+        setGlobalError("Error processing CSV file");
+        console.error("CSV processing error:", error);
+      } finally {
+        setFileLoading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setGlobalError("Error reading file");
+      setFileLoading(false);
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleClearFile = () => {
+    // Store current custom columns before clearing
+    const columnsToRemove = [...customColumns];
+    
+    // Clear file and columns first
+    setCustomFile(null);
+    setCustomColumns([]);
+    setGlobalError("");
+
+
+    setPortfolios((prev) =>
+      prev.map((p) => {
+        const updatedSystems = (p.selected_systems || []).filter(
+          (sys) => !columnsToRemove.includes(sys.system)
+        );
+        const updatedDebtFunds = (p.selected_debtfunds || []).filter(
+          (fund) => !columnsToRemove.includes(fund.debtfund)
+        );
+
+        // 🔹 Recalculate equal weights after removal
+        const sysWeight = updatedSystems.length ? 100 / updatedSystems.length : 0;
+        const debtWeight = updatedDebtFunds.length ? 100 / updatedDebtFunds.length : 0;
+
+        const recalculatedSystems = updatedSystems.map((s) => ({
+          ...s,
+          weightage: parseFloat(sysWeight.toFixed(6)),
+        }));
+
+        const recalculatedDebtFunds = updatedDebtFunds.map((d) => ({
+          ...d,
+          weightage: parseFloat(debtWeight.toFixed(6)),
+        }));
+
+        return {
+          ...p,
+          selected_systems: recalculatedSystems,
+          selected_debtfunds: recalculatedDebtFunds,
+        };
+      })
+    );
+
+  };
+
   const handleFormSubmit = async (formData) => {
     try {
       setLoading(true);
@@ -115,6 +212,14 @@ const PortfolioIndex = () => {
             portfolios={portfolios}
             setPortfolios={setPortfolios}
             loading={loading}
+            handleClearFile = {handleClearFile}
+            handleFileUpload={handleFileUpload} 
+            fileLoading={fileLoading} 
+            globalError={globalError} 
+            setGlobalError={setGlobalError} 
+            customFile={customFile} 
+            customColumns={customColumns} 
+            setCustomColumns={setCustomColumns}
           />
         </TabsContent>
 

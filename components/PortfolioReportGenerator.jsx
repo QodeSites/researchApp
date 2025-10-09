@@ -110,7 +110,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
     if (selectedComponents.annualReturns) {
       const annual = (portfolio.result?.annual_returns || []).map((x) => ({
         Year: x.year,
-        Return: `${(x.return * 100).toFixed(2)}%`,
+        Return: `${(x.return).toFixed(2)}%`,
       }))
       addSheet(annual, "Annual Returns")
     }
@@ -119,7 +119,7 @@ export default function PortfolioReportGenerator({ portfolios }) {
       const trailing = Object.entries(portfolio.result?.trailing_returns || {}).map(
         ([p, r]) => ({
           Period: p,
-          Return: r != null && !isNaN(r) ? `${(r * 100).toFixed(2)}%` : "-",
+          Return: r != null && !isNaN(r) ? `${(r).toFixed(2)}%` : "-",
         })
       )
       addSheet(trailing, "Trailing Returns")
@@ -146,9 +146,9 @@ export default function PortfolioReportGenerator({ portfolios }) {
         const { Year, Total, ...months } = y
         const row = { Year }
         MONTHS.forEach((m) => {
-          row[m] = months[m] != null ? months[m].toFixed(1) : "0.0"
+          row[m] = months[m] != null ? months[m].toFixed(2) : "0.0"
         })
-        row.Total = Total != null ? Total.toFixed(1) : "0.0"
+        row.Total = Total != null ? Total.toFixed(2) : "0.0"
         return row
       })
       addSheet(monthly, "Monthly P&L")
@@ -267,8 +267,8 @@ export default function PortfolioReportGenerator({ portfolios }) {
         const { Year, Total, ...months } = y
         return [
           Year,
-          ...MONTHS.map((m) => (months[m] != null ? months[m].toFixed(1) : "0.0")),
-          Total != null ? Total.toFixed(1) : "0.0",
+          ...MONTHS.map((m) => (months[m] != null ? months[m].toFixed(1) : "0.00")),
+          Total != null ? Total.toFixed(1) : "0.00",
         ]
       })
       autoTable(doc, {

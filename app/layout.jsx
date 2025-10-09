@@ -15,6 +15,15 @@ const playfair = Playfair_Display({
   display: "swap",
 })
 
+export const metadata = {
+  title: "Qode 360",
+  description: "Qode 360",
+  generator: "v0.app",
+  icons: {
+    icon: "/favicon.ico",
+  },
+}
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${lato.variable} ${playfair.variable} antialiased`}>

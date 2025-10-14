@@ -74,14 +74,14 @@ const AnnualMetricsTable = ({ portfolios }) => {
                 <TableCell className="text-center font-medium">{year}</TableCell>
                 {allMetrics.map((metrics, idx) => {
                   const yearMetric = metrics.find((m) => m.year === year)
-                  const val = isNaN(yearMetric.return) ? "-" : `${yearMetric.return.toFixed(2)}%`
+                  const val = isNaN(yearMetric?.return) ? "-" : `${yearMetric?.return.toFixed(2)}%`
                   return yearMetric ? (
                     <React.Fragment key={idx}>
                       <TableCell
                         className={`text-center ${
-                          yearMetric.return > 0
+                          yearMetric?.return > 0
                             ? "text-green-600"
-                            : yearMetric.return < 0
+                            : yearMetric?.return < 0
                             ? "text-red-600"
                             : ""
                         }`}

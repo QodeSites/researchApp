@@ -28,50 +28,55 @@ import { cn } from "@/lib/utils"
 
 // --- CSV Helpers ---
 const generateCsv = (data, type) => {
-  const headers =
-    type === "inquiries"
-      ? [
-          "S.No",
-          "Name",
-          "Email",
-          "Phone Number",
-          "Received Date",
-          "Updated Date",
-          "Status",
-          "Enquiry",
-          "Additional Comments",
-        ]
-      : ["S.No", "Email", "Subscribed At"]
+  const headers = [
+    "S.No",
+    "Source",
+    "Name",
+    "Email",
+    "Phone",
+    "Location",
+    "Message",
+    "Investment Goal",
+    "Investment Experience",
+    "Preferred Strategy",
+    "Initial Investment Size",
+    "Status",
+    "Additional Comments",
+    "Email Sent",
+    "Email ID",
+    "Zoho Lead ID",
+    "Created Date",
+    "Updated Date",
+  ]
 
   const rows = data.map((item, index) => {
-    if (type === "inquiries") {
-      return [
-        index + 1,
-        `"${item.name?.replace(/"/g, '""')}"`,
-        item.email,
-        item.phone_number,
-        item.createdAt
-          ? format(parseISO(item.createdAt), "MM/dd/yyyy, HH:mm:ss")
-          : "Invalid Date",
-        item.updatedAt
-          ? format(parseISO(item.updatedAt), "MM/dd/yyyy, HH:mm:ss")
-          : "Not updated",
-        item.status || "yet to contact",
-        `"${(item.additional_message || "").replace(/"/g, '""')}"`,
-        `"${(item.additionalComments || "").replace(/"/g, '""')}"`,
-      ].join(",")
-    } else {
-      return [
-        index + 1,
-        item.email,
-        item.createdAt
-          ? format(parseISO(item.createdAt), "MM/dd/yyyy, HH:mm:ss")
-          : "Invalid Date",
-      ].join(",")
-    }
+    return [
+      index + 1,
+      item.source || "-",
+      `"${(item.name || item.fullName || "").replace(/"/g, '""')}"`,
+      item.email || "-",
+      item.phone_number || item.contactNumber || "-",
+      item.location || "-",
+      `"${(item.message || item.additional_message || "").replace(/"/g, '""')}"`,
+      item.investment_goal || "-",
+      item.investment_experience || "-",
+      item.preferred_strategy || "-",
+      item.initial_investment_size || "-",
+      item.status || "-",
+      `"${(item.additionalComments || "").replace(/"/g, '""')}"`,
+      item.emailSent || "-",
+      item.emailId || "-",
+      item.zohoLeadId || "-",
+      item.createdAt || item.submittedAt
+        ? format(parseISO(item.createdAt || item.submittedAt), "MM/dd/yyyy, HH:mm:ss")
+        : "-",
+      item.updatedAt
+        ? format(parseISO(item.updatedAt), "MM/dd/yyyy, HH:mm:ss")
+        : "-",
+    ].join(",")
   })
 
-  const filename = `${type}_${new Date()
+  const filename = `all_enquiries_${new Date()
     .toISOString()
     .split("T")[0]}.csv`
 
@@ -95,50 +100,34 @@ const downloadCsv = (csvContent, filename) => {
 
 // --- Component ---
 const DataViewer = () => {
-  const [inquiries, setInquiries] = useState([])
-  const [newsletterEmails, setNewsletterEmails] = useState([])
-  const [loading, setLoading] = useState({ inquiries: true, newsletter: true })
+  const [allInquiries, setAllInquiries] = useState([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedInquiries, setSelectedInquiries] = useState([])
-  const [selectedNewsletterEmails, setSelectedNewsletterEmails] = useState([])
   const [updateStates, setUpdateStates] = useState({})
-  const [searchQuery, setSearchQuery] = useState({
-    inquiries: "",
-    newsletter: "",
-  })
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sourceFilter, setSourceFilter] = useState("all")
 
   // --- Fetch Data ---
   useEffect(() => {
     const fetchInquiries = async () => {
       try {
-        setLoading((prev) => ({ ...prev, inquiries: true }))
+        setLoading(true)
         const response = await fetch("/api/websiteEnquiries")
         const data = await response.json()
-        if (data.success) setInquiries(data.data)
-        else throw new Error(data.message || "Failed to fetch inquiries")
+        if (data.success) {
+          setAllInquiries(data.data || [])
+        } else {
+          throw new Error(data.message || "Failed to fetch inquiries")
+        }
       } catch (err) {
         setError(err.message)
       } finally {
-        setLoading((prev) => ({ ...prev, inquiries: false }))
-      }
-    }
-
-    const fetchNewsletterEmails = async () => {
-      try {
-        setLoading((prev) => ({ ...prev, newsletter: true }))
-        const response = await fetch("/api/newsletterEmails")
-        const data = await response.json()
-        if (data.success) setNewsletterEmails(data.data)
-        else throw new Error(data.message || "Failed to fetch newsletter emails")
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading((prev) => ({ ...prev, newsletter: false }))
+        setLoading(false)
       }
     }
 
     fetchInquiries()
-    fetchNewsletterEmails()
   }, [])
 
   const handleStatusChange = (id, status) => {
@@ -167,7 +156,7 @@ const DataViewer = () => {
       const data = await response.json()
       if (data.success) {
         alert("Inquiry updated successfully")
-        setInquiries((prev) =>
+        setAllInquiries((prev) =>
           prev.map((inq) =>
             inq.id === id ? { ...inq, status, additionalComments } : inq
           )
@@ -178,18 +167,28 @@ const DataViewer = () => {
     }
   }
 
-  const filteredInquiries = inquiries.filter(
-    (inq) =>
-      inq.name?.toLowerCase().includes(searchQuery.inquiries.toLowerCase()) ||
-      inq.email?.toLowerCase().includes(searchQuery.inquiries.toLowerCase())
-  )
-  const filteredNewsletterEmails = newsletterEmails.filter((email) =>
-    email.email.toLowerCase().includes(searchQuery.newsletter.toLowerCase())
-  )
+  // Filter inquiries
+  const filteredInquiries = allInquiries.filter((inq) => {
+    const matchesSearch =
+      (inq.name || inq.fullName)
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      inq.email?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesSource = sourceFilter === "all" || inq.source === sourceFilter
+
+    return matchesSearch && matchesSource
+  })
+
+  const websiteCount = allInquiries.filter((i) => i.source === "website").length
+  const clientCount = allInquiries.filter((i) => i.source === "client_enquiry").length
 
   return (
     <div className="p-6 min-h-screen">
-      <h2 className="text-2xl font-bold mb-4">Website Data</h2>
+      <h2 className="text-2xl font-bold mb-2">All Inquiries</h2>
+      <p className="text-gray-600 mb-4">
+        Website: {websiteCount} | Client Enquiry: {clientCount} | Total: {allInquiries.length}
+      </p>
 
       {error && (
         <div className="mb-4 text-red-600 bg-red-100 p-2 rounded">
@@ -197,125 +196,148 @@ const DataViewer = () => {
         </div>
       )}
 
-      <Tabs defaultValue="inquiries">
-        <TabsList>
-          <TabsTrigger value="inquiries">Inquiries</TabsTrigger>
-          <TabsTrigger value="newsletter">Newsletter Emails</TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
+        <Button
+          onClick={() => {
+            if (!selectedInquiries.length) {
+              alert("Select at least one inquiry")
+              return
+            }
+            const { csvContent, filename } = generateCsv(
+              allInquiries.filter((i) => selectedInquiries.includes(i.id)),
+              "all"
+            )
+            downloadCsv(csvContent, filename)
+          }}
+        >
+          Download Selected ({selectedInquiries.length})
+        </Button>
 
-        {/* Inquiries */}
-        <TabsContent value="inquiries">
-          <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <Button
-              onClick={() => {
-                if (!selectedInquiries.length) {
-                  alert("Select at least one inquiry")
-                  return
-                }
-                const { csvContent, filename } = generateCsv(
-                  inquiries.filter((i) => selectedInquiries.includes(i.id)),
-                  "inquiries"
-                )
-                downloadCsv(csvContent, filename)
-              }}
-            >
-              Download Selected ({selectedInquiries.length})
-            </Button>
-            <Input
-              placeholder="Search inquiries..."
-              value={searchQuery.inquiries}
-              onChange={(e) =>
-                setSearchQuery((prev) => ({
-                  ...prev,
-                  inquiries: e.target.value,
-                }))
-              }
-              className="md:w-72 bg-background"
-            />
-          </div>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="md:w-48 bg-background">
+            <SelectValue placeholder="Filter by source" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sources</SelectItem>
+            <SelectItem value="website">Website Enquiries</SelectItem>
+            <SelectItem value="client_enquiry">Client Enquiry</SelectItem>
+          </SelectContent>
+        </Select>
 
-          {loading.inquiries ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="animate-spin w-6 h-6 text-primary" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table className="border bg-background rounded-lg">
-                <TableHeader className="bg-primary text-white font-bold">
-                  <TableRow className="bg-primary text-white font-bold">
-                    <TableHead className="bg-primary text-white font-bold">
+        <Input
+          placeholder="Search by name or email..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="md:flex-1 bg-background"
+        />
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-6">
+          <Loader2 className="animate-spin w-6 h-6 text-primary" />
+        </div>
+      ) : (
+        <div className="w-full">
+          <Table className="border bg-background rounded-lg text-sm table-auto">
+            <TableHeader className="bg-primary text-white font-bold">
+              <TableRow className="bg-primary text-white font-bold">
+                <TableHead className="bg-primary text-white font-bold p-2">
+                  <Checkbox
+                    checked={
+                      selectedInquiries.length === filteredInquiries.length &&
+                      filteredInquiries.length > 0
+                    }
+                    onCheckedChange={(checked) =>
+                      setSelectedInquiries(
+                        checked ? filteredInquiries.map((i) => i.id) : []
+                      )
+                    }
+                    className="bg-primary text-white font-bold"
+                  />
+                </TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">#</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Source</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Name</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Email</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Phone</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Location</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Message</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Investment Goal</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Exp.</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Strategy</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Init. Invest.</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Status</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Received</TableHead>
+                <TableHead className="bg-primary text-white font-bold p-2">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInquiries.length > 0 ? (
+                filteredInquiries.map((inq, i) => (
+                  <TableRow key={inq.id} className="text-xs">
+                    <TableCell className="p-2">
                       <Checkbox
-                        checked={
-                          selectedInquiries.length ===
-                            filteredInquiries.length &&
-                          filteredInquiries.length > 0
-                        }
-                        onCheckedChange={(checked) =>
-                          setSelectedInquiries(
-                            checked
-                              ? filteredInquiries.map((i) => i.id)
-                              : []
+                        checked={selectedInquiries.includes(inq.id)}
+                        onCheckedChange={() =>
+                          setSelectedInquiries((prev) =>
+                            prev.includes(inq.id)
+                              ? prev.filter((id) => id !== inq.id)
+                              : [...prev, inq.id]
                           )
                         }
-                        className="bg-primary text-white font-bold"
                       />
-                    </TableHead>
-                    <TableHead className="bg-primary text-white font-bold">#</TableHead>
-                    <TableHead className="bg-primary text-white font-bold">Name</TableHead>
-                    <TableHead className="bg-primary text-white font-bold">Email</TableHead>
-                    <TableHead className="bg-primary text-white font-bold">Phone</TableHead>
-                    <TableHead className="bg-primary text-white font-bold">Received</TableHead>
-                    <TableHead className="bg-primary text-white font-bold">Status</TableHead>
-                    <TableHead className="bg-primary text-white font-bold">Update</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredInquiries.map((inq, i) => (
-                    <TableRow key={inq.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedInquiries.includes(inq.id)}
-                          onCheckedChange={() =>
-                            setSelectedInquiries((prev) =>
-                              prev.includes(inq.id)
-                                ? prev.filter((id) => id !== inq.id)
-                                : [...prev, inq.id]
-                            )
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>{i + 1}</TableCell>
-                      <TableCell>{inq.name}</TableCell>
-                      <TableCell>{inq.email}</TableCell>
-                      <TableCell>{inq.phone_number}</TableCell>
-                      <TableCell>
-                        {inq.createdAt
-                          ? format(parseISO(inq.createdAt), "MM/dd/yyyy")
-                          : "-"}
-                      </TableCell>
-                      <TableCell>{inq.status || "yet to contact"}</TableCell>
-                      <TableCell>
+                    </TableCell>
+                    <TableCell className="font-medium p-2">{i + 1}</TableCell>
+                    <TableCell className="p-2">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${
+                          inq.source === "website"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {inq.source === "website" ? "Web" : "Client"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.name || inq.fullName || "-"}</TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.email || "-"}</TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.phone_number || inq.contactNumber || "-"}</TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.location || "-"}</TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal max-h-20 overflow-y-auto">
+                      {inq.message || inq.additional_message || "-"}
+                    </TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.investment_goal || "-"}</TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.investment_experience || "-"}</TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.preferred_strategy || "-"}</TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.initial_investment_size || "-"}</TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">{inq.status || "yet to contact"}</TableCell>
+                    <TableCell className="p-2 whitespace-nowrap">
+                      {inq.createdAt || inq.submittedAt
+                        ? format(
+                            parseISO(inq.createdAt || inq.submittedAt),
+                            "MM/dd/yyyy"
+                          )
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="p-2 break-words whitespace-normal">
+                      <div className="space-y-1">
                         <Select
-                          onValueChange={(val) =>
-                            handleStatusChange(inq.id, val)
-                          }
+                          onValueChange={(val) => handleStatusChange(inq.id, val)}
                           defaultValue={inq.status || "yet to contact"}
                         >
-                          <SelectTrigger className="w-[150px]">
+                          <SelectTrigger className="w-full text-xs h-8">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Contacted">
-                              Contacted
-                            </SelectItem>
-                            <SelectItem value="dummy">Dummy</SelectItem>
+                            <SelectItem value="Contacted">Contacted</SelectItem>
+                            <SelectItem value="Dummy">Dummy</SelectItem>
                             <SelectItem value="yet to contact">
                               Yet to Contact
                             </SelectItem>
                           </SelectContent>
                         </Select>
                         <Textarea
-                          placeholder="Add comments..."
+                          placeholder="Comments..."
                           value={
                             updateStates[inq.id]?.additionalComments ??
                             inq.additionalComments ??
@@ -324,118 +346,30 @@ const DataViewer = () => {
                           onChange={(e) =>
                             handleCommentsChange(inq.id, e.target.value)
                           }
-                          className="mt-2"
+                          className="text-xs min-h-16 p-1 break-words whitespace-normal"
                         />
                         <Button
                           size="sm"
-                          className="mt-2 bg-primary text-accent"
+                          className="w-full bg-primary text-accent text-xs h-7"
                           onClick={() => handleUpdate(inq.id)}
                         >
                           Update
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Newsletter */}
-        <TabsContent value="newsletter">
-          <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <Button
-              onClick={() => {
-                if (!selectedNewsletterEmails.length) {
-                  alert("Select at least one email")
-                  return
-                }
-                const { csvContent, filename } = generateCsv(
-                  newsletterEmails.filter((i) =>
-                    selectedNewsletterEmails.includes(i.id)
-                  ),
-                  "newsletter"
-                )
-                downloadCsv(csvContent, filename)
-              }}
-            >
-              Download Selected ({selectedNewsletterEmails.length})
-            </Button>
-            <Input
-              placeholder="Search emails..."
-              value={searchQuery.newsletter}
-              onChange={(e) =>
-                setSearchQuery((prev) => ({
-                  ...prev,
-                  newsletter: e.target.value,
-                }))
-              }
-              className="md:w-72 bg-background"
-            />
-          </div>
-
-          {loading.newsletter ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="animate-spin w-6 h-6 text-primary" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table className="border bg-background rounded-lg">
-                <TableHeader className="bg-primary text-white font-bold">
-                  <TableRow className="bg-primary text-white font-bold">
-                    <TableHead className="bg-primary text-white font-bold">
-                      <Checkbox
-                        checked={
-                          selectedNewsletterEmails.length ===
-                            filteredNewsletterEmails.length &&
-                          filteredNewsletterEmails.length > 0
-                        }
-                        onCheckedChange={(checked) =>
-                          setSelectedNewsletterEmails(
-                            checked
-                              ? filteredNewsletterEmails.map((i) => i.id)
-                              : []
-                          )
-                        }
-                        className="bg-primary text-white font-bold"
-                      />
-                    </TableHead>
-                    <TableHead className="bg-primary text-white font-bold">#</TableHead>
-                    <TableHead className="bg-primary text-white font-bold">Email</TableHead>
-                    <TableHead className="bg-primary text-white font-bold">Subscribed At</TableHead>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredNewsletterEmails.map((email, i) => (
-                    <TableRow key={email.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedNewsletterEmails.includes(email.id)}
-                          onCheckedChange={() =>
-                            setSelectedNewsletterEmails((prev) =>
-                              prev.includes(email.id)
-                                ? prev.filter((id) => id !== email.id)
-                                : [...prev, email.id]
-                            )
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>{i + 1}</TableCell>
-                      <TableCell>{email.email}</TableCell>
-                      <TableCell>
-                        {email.createdAt
-                          ? format(parseISO(email.createdAt), "MM/dd/yyyy")
-                          : "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan="15" className="text-center py-4 text-gray-500">
+                    No inquiries found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   )
 }

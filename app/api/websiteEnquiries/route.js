@@ -49,10 +49,10 @@ export async function GET(req, res) {
       db.query(clientQuery),
     ]);
 
-    // Combine results from both sources
+    // Combine results from both sources with unique_id to avoid key conflicts
     const combinedData = [
-      ...websiteResults.rows,
-      ...clientResults.rows,
+      ...websiteResults.rows.map(row => ({ ...row, unique_id: `website_${row.id}` })),
+      ...clientResults.rows.map(row => ({ ...row, unique_id: `client_${row.id}` })),
     ];
 
     return NextResponse.json({

@@ -197,7 +197,7 @@ const validatePortfolios = useCallback(() => {
       </div>
 
       <Tabs value={activeKey} onValueChange={handleSelect} className="w-full">
-        <TabsList className="flex flex-wrap gap-2">
+        <TabsList className="flex flex-wrap gap-2 mb-20">
           {portfolios.map((portfolio, index) => (
             <TabsTrigger
               key={portfolio.id}

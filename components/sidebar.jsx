@@ -17,10 +17,30 @@ import clsx from "clsx";
 import { usePathname } from "next/navigation";
 import * as Icons from "lucide-react";
 import Link from "next/link";
-
+import { useEffect, useState } from "react";
 
 export default function AppSidebar({ allowedItems }) {
   const pathname = usePathname();
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("/api/user");
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   return (
     <Sidebar>
@@ -58,7 +78,13 @@ export default function AppSidebar({ allowedItems }) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarFooter className="mt-auto">
+        <SidebarFooter className="mt-auto space-y-4">
+          {!isLoading && user && (
+            <div className="px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+              <p className="text-sm font-medium text-gray-900">{user.name}</p>
+              <p className="text-xs text-gray-600 truncate">{user.email}</p>
+            </div>
+          )}
           <Button
             variant="outline"
             className="w-full flex items-center gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"

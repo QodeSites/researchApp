@@ -20,6 +20,10 @@ export function PermissionsProvider({ children }) {
     { title: "Portfolio Visualiser", url: "/portfolio-visualiser", icon: "LineChart" },
     { title: "Website Enquiries", url: "/website-enquiries", icon: "MessageSquare" },
     { title: "MyQode Website Enquiries", url: "/myqode-website-enquiries", icon: "Inbox" },
+    { title: "Stock", url: "/stock", icon: "Inbox" },
+    { title: "Stock Details", url: "/stock-details", icon: "Inbox" },
+    { title: "Website Traffic", url: "/website-traffic", icon: "Inbox" },
+    { title: "Newsletter Analytics", url: "/newsletter-analytics", icon: "Inbox" },
     { title: "Admin", url: "/admin", icon: "Settings" },
   ];
 

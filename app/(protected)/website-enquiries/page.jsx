@@ -31,25 +31,25 @@ const generateCsv = (data, type) => {
     type === "newsletter"
       ? ["S.No", "Email", "Subscribed At"]
       : [
-          "S.No",
-          "Source",
-          "Name",
-          "Email",
-          "Phone",
-          "Location",
-          "Message",
-          "Investment Goal",
-          "Investment Experience",
-          "Preferred Strategy",
-          "Initial Investment Size",
-          "Status",
-          "Additional Comments",
-          "Email Sent",
-          "Email ID",
-          "Zoho Lead ID",
-          "Created Date",
-          "Updated Date",
-        ]
+        "S.No",
+        "Source",
+        "Name",
+        "Email",
+        "Phone",
+        "Location",
+        "Message",
+        "Investment Goal",
+        "Investment Experience",
+        "Preferred Strategy",
+        "Initial Investment Size",
+        "Status",
+        "Additional Comments",
+        "Email Sent",
+        "Email ID",
+        "Zoho Lead ID",
+        "Created Date",
+        "Updated Date",
+      ]
 
   const rows = data.map((item, index) => {
     if (type === "newsletter") {
@@ -374,8 +374,8 @@ const DataViewer = () => {
         <TabsContent value="inquiries" className="mt-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
             <p className="text-sm text-muted-foreground">
-              Website: <span className="font-semibold">{websiteCount}</span> | 
-              Client: <span className="font-semibold">{clientCount}</span> | 
+              Website: <span className="font-semibold">{websiteCount}</span> |
+              Client: <span className="font-semibold">{clientCount}</span> |
               Total: <span className="font-semibold">{allInquiries.length}</span>
               {hasActiveFilters && (
                 <span className="ml-2">| Results: <span className="font-semibold text-primary">{filteredInquiries.length}</span></span>

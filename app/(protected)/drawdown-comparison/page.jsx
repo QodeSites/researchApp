@@ -361,15 +361,21 @@ const IndexTable = () => {
                   ? parseFloat(item.currentDD.replace("%", ""))
                   : item.currentDD;
 
+              // Helper to format to two decimals
+              const formatTwoDecimal = (val, percent = false) => {
+                if (val === undefined || val === null || isNaN(Number(val))) return "-";
+                let num = Number(val);
+                return num.toFixed(2) + (percent ? "%" : "");
+              };
+
               return (
                 <TableRow key={item.indices}>
                   <TableCell>{item.idx}</TableCell>
                   <TableCell>{item.indices}</TableCell>
                   <TableCell>{item.category}</TableCell>
-                  <TableCell>{item.nav}</TableCell>
-                  <TableCell>{item.currentDD}</TableCell>
-                  <TableCell>{item.peak}</TableCell>
-
+                  <TableCell>{formatTwoDecimal(item.nav)}</TableCell>
+                  <TableCell>{formatTwoDecimal(item.currentDD, true)}</TableCell>
+                  <TableCell>{formatTwoDecimal(item.peak)}</TableCell>
                   {[10, 15, 20].map((dd) => (
                     <TableCell
                       key={dd}
@@ -377,7 +383,10 @@ const IndexTable = () => {
                         numericDD <= -dd ? "text-green-600 font-medium" : ""
                       }
                     >
-                      {numericDD <= -dd ? "Done" : item[`dd${dd}_value`]}
+                      {numericDD <= -dd
+                        ? "Done"
+                        : formatTwoDecimal(item[`dd${dd}_value`])
+                      }
                     </TableCell>
                   ))}
                 </TableRow>

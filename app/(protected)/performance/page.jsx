@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import formatDate from "@/utils/formatDate";
-
 import {
   Tabs,
   TabsList,
@@ -28,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 import allIndicesGroups from "@/utils/allIndicesGroups";
 
 const PYTHON_BASE_URL =
@@ -35,7 +35,6 @@ const PYTHON_BASE_URL =
     ? "https://calculator.qodeinvest.com"
     : "http://localhost:5080";
 
-// --- CSV Utils ---
 const generateMultiIndexCsv = (navData, indices, startDate, endDate) => {
   const allDates = new Set();
   indices.forEach((index) => {
@@ -67,7 +66,6 @@ const downloadCsv = (csvContent, filename) => {
   link.click();
 };
 
-// --- Page ---
 export default function IndicesComparisonPage() {
   const [indicesData, setIndicesData] = useState(null);
   const [combinedIndices, setCombinedIndices] = useState([]);
@@ -83,17 +81,13 @@ export default function IndicesComparisonPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  // --- NEW: Breakdown States ---
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [breakdowns, setBreakdowns] = useState({});
+  const [loadingBreakdown, setLoadingBreakdown] = useState({});
+
   const shortTermCols = [
-    "1D",
-    "2D",
-    "3D",
-    "1W",
-    "1M",
-    "3M",
-    "6M",
-    "9M",
-    "1Y",
-    "Drawdown",
+    "1D", "2D", "3D", "1W", "1M", "3M", "6M", "9M", "1Y", "Drawdown",
   ];
   const longTermCols = ["1Y", "2Y", "3Y", "4Y", "5Y", "CDR", "CDR_MDD"];
 
@@ -107,7 +101,7 @@ export default function IndicesComparisonPage() {
         payload.endDate = endDate;
       }
 
-      const response = await fetch(`/api/indices`, {
+      const response = await fetch(`${PYTHON_BASE_URL}/api/clienttracker/indices/false`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -119,15 +113,14 @@ export default function IndicesComparisonPage() {
         setIndicesData(result.data);
         setDataAsOf(result.dataAsOf || new Date().toISOString());
 
-        // --- Assign global fixed idx using index order ---
-        const allIndices = Object.values(allIndicesGroups).flat(); // flatten all indices globally
+        const allIndices = Object.values(allIndicesGroups).flat();
         const combined = allIndices.map((index, idx) => {
           const category =
             Object.keys(allIndicesGroups).find((key) =>
               allIndicesGroups[key].includes(index)
             ) || "Unknown";
           return {
-            idx: idx + 1, // global serial number
+            idx: idx + 1,
             index,
             category,
             ...(result.data?.[index] || {}),
@@ -149,7 +142,40 @@ export default function IndicesComparisonPage() {
     fetchData();
   }, []);
 
-  // --- Reset Table ---
+  // --- Breakdown Fetch ---
+  const toggleBreakdown = async (indexName) => {
+    setExpandedRows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(indexName)) newSet.delete(indexName);
+      else newSet.add(indexName);
+      return newSet;
+    });
+
+    if (!breakdowns[indexName] && !loadingBreakdown[indexName]) {
+      try {
+        setLoadingBreakdown((prev) => ({ ...prev, [indexName]: true }));
+        const payload = { code: indexName };
+        if (startDate && endDate) {
+          payload.startDate = startDate;
+          payload.endDate = endDate;
+        }
+        const res = await fetch(`${PYTHON_BASE_URL}/api/clienttracker/returns_breakdown`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        setBreakdowns((prev) => ({ ...prev, [indexName]: json }));
+      } catch (err) {
+        console.error("Failed to load breakdown:", err);
+      } finally {
+        setLoadingBreakdown((prev) => ({ ...prev, [indexName]: false }));
+      }
+    }
+  };
+
+  console.log(breakdowns)
+
   const resetTable = () => {
     setSearchTerm("");
     setSelectedGroup("All");
@@ -160,7 +186,7 @@ export default function IndicesComparisonPage() {
     fetchData();
   };
 
-  // --- Download Selected NAV ---
+
   const downloadSelectedNavData = async () => {
     if (selectedIndices.length === 0) {
       alert("Please select at least one index");
@@ -172,11 +198,12 @@ export default function IndicesComparisonPage() {
         payload.startDate = startDate;
         payload.endDate = endDate;
       }
-      const response = await fetch(`/api/indices?downloadNav=true`, {
+      const response = await fetch(`${PYTHON_BASE_URL}/api/clienttracker/indices/true`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       const result = await response.json();
       if (response.ok) {
         const navData = result.data || {};
@@ -202,7 +229,6 @@ export default function IndicesComparisonPage() {
     }
   };
 
-  // --- Helpers ---
   const toggleIndexSelection = (index) => {
     setSelectedIndices((prev) =>
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
@@ -238,88 +264,123 @@ export default function IndicesComparisonPage() {
 
   const sorted = getSortedIndices(filteredIndices);
 
-  // --- Render Table ---
+  // --- Table Renderer ---
   const renderTable = (columns) => (
     <Table className="border bg-background rounded-lg">
       <TableHeader className="bg-primary text-white font-bold">
         <TableRow className="bg-primary text-white font-bold">
-          <TableHead
-            className="bg-primary text-white font-bold cursor-pointer"
-            onClick={() => setSortConfig({ key: "#", direction: "asc" })}
-          >
-            #
-          </TableHead>
-          <TableHead>
-            <Checkbox
-              className= "bg-primary text-white font-bold cursor-pointer"
-              checked={selectedIndices.length === sorted.length && sorted.length > 0}
-              onCheckedChange={() =>
-                setSelectedIndices(
-                  selectedIndices.length === sorted.length
-                    ? []
-                    : sorted.map((i) => i.index)
-                )
-              }
-            />
-          </TableHead>
-          <TableHead className="bg-primary text-white font-bold" >Index</TableHead>
-          <TableHead className="bg-primary text-white font-bold" >Category</TableHead>
+          <TableHead className="bg-primary text-white font-bold">#</TableHead>
+          <TableHead className="bg-primary text-white font-bold"></TableHead>
+          <TableHead className="bg-primary text-white font-bold">Expand</TableHead>
+          <TableHead className="bg-primary text-white font-bold">Index</TableHead>
+          <TableHead className="bg-primary text-white font-bold">Category</TableHead>
           {columns.map((col) => (
-            <TableHead
-              key={col}
-              className="bg-primary text-white font-bold cursor-pointer"
-              onClick={() =>
-                setSortConfig((prev) => ({
-                  key: col,
-                  direction:
-                    prev.key === col && prev.direction === "asc"
-                      ? "desc"
-                      : "asc",
-                }))
-              }
-            >
-              {col}
-              {sortConfig.key === col
-                ? sortConfig.direction === "asc"
-                  ? " ▲"
-                  : " ▼"
-                : ""}
-            </TableHead>
+            <TableHead className="bg-primary text-white font-bold" key={col}>{col}</TableHead>
           ))}
         </TableRow>
       </TableHeader>
+
       <TableBody>
         {sorted.map((item) => (
-          <TableRow key={item.index}>
-            <TableCell>{item.idx}</TableCell>
-            <TableCell>
-              <Checkbox
-                checked={selectedIndices.includes(item.index)}
-                onCheckedChange={() => toggleIndexSelection(item.index)}
-              />
-            </TableCell>
-            <TableCell>{item.index}</TableCell>
-            <TableCell>{item.category}</TableCell>
-            {columns.map((col) => (
-              <TableCell
-                key={col}
-                className={
-                  item[col] && parseFloat(item[col]) < 0 ? "text-red-500" : ""
-                }
-              >
-                {item[col] ? `${item[col]}%` : "-"}
+          <>
+            {/* Main row */}
+            <TableRow key={item.index}>
+              <TableCell>{item.idx}</TableCell>
+              <TableCell>
+                <Checkbox
+                  className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
+                  checked={selectedIndices.includes(item.index)}
+                  onCheckedChange={() => toggleIndexSelection(item.index)}
+                />
               </TableCell>
-            ))}
-          </TableRow>
+              <TableCell>
+                {allIndicesGroups["Qode Strategies"].includes(item.index) && (item.index !== 'QGF-LIVE') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleBreakdown(item.index)}
+                  >
+                    {expandedRows.has(item.index) ? "▾" : "▸"}
+                  </Button>
+                )}
+              </TableCell>
+              <TableCell>{item.index}</TableCell>
+              <TableCell>{item.category}</TableCell>
+              {columns.map((col) => (
+                <TableCell
+                  key={col}
+                  className={item[col] && parseFloat(item[col]) < 0 ? "text-red-500" : ""}
+                >
+                  {item[col] !== undefined && item[col] !== null && item[col] !== ""
+                    ? `${!isNaN(Number(item[col])) ? Number(item[col]).toFixed(2) : item[col]}%`
+                    : "-"}
+                </TableCell>
+              ))}
+            </TableRow>
+
+            {/* Breakdown rows */}
+            {expandedRows.has(item.index) && (
+              <>
+                {loadingBreakdown[item.index] ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length + 5} className="text-center py-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary inline mr-2" />
+                      Loading breakdown...
+                    </TableCell>
+                  </TableRow>
+                ) : breakdowns[item.index] &&
+                  Array.isArray(breakdowns[item.index].returns) ? (
+                  breakdowns[item.index].returns.map((seg, j) => (
+                    <TableRow key={`${item.index}-segment-${j}`} className="bg-muted/30 text-sm">
+                      <TableCell />
+                      {seg.label !== "Total" ? (
+                        <>
+                          <TableCell>
+                            <Checkbox
+                              className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
+                              checked={selectedIndices.includes(`${item.index}-${seg.label}`)}
+                              onCheckedChange={() => toggleIndexSelection(`${item.index}-${seg.label}`)}
+                            />
+                          </TableCell>
+                          <TableCell />
+                        </>
+                      ) : (
+                        <>
+                        <TableCell />
+                        <TableCell />
+                        </>
+                      )}
+                      
+                      <TableCell className="text-xs text-gray-600 italic">{seg.label || "-"}</TableCell>
+                      <TableCell></TableCell>
+                      {columns.map((col) => (
+                        <TableCell className="text-xs text-gray-600 italic" key={col}>
+                          {seg.trailing[col] !== undefined && seg.trailing[col] !== null
+                            ? `${seg.trailing[col]}%`
+                            : seg.metrics[col] !== undefined && seg.metrics[col] !== null
+                              ? `${seg.metrics[col]}%`
+                              : "-"}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={columns.length + 5} className="text-center text-sm">
+                      No breakdown data available.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </>
+            )}
+          </>
         ))}
       </TableBody>
     </Table>
   );
 
   if (loading)
-    return (
-      <div className="flex justify-center items-center h-screen">Loading...</div>
-    );
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <Alert variant="destructive">{error}</Alert>;
 
   return (

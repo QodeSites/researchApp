@@ -86,6 +86,9 @@ export default function IndicesComparisonPage() {
   const [breakdowns, setBreakdowns] = useState({});
   const [loadingBreakdown, setLoadingBreakdown] = useState({});
 
+  // New state: Loading for download
+  const [downloading, setDownloading] = useState(false);
+
   const shortTermCols = [
     "1D", "2D", "3D", "1W", "1M", "3M", "6M", "9M", "1Y", "Drawdown",
   ];
@@ -174,7 +177,8 @@ export default function IndicesComparisonPage() {
     }
   };
 
-  console.log(breakdowns)
+  // Fix: Remove debug
+  // console.log(breakdowns)
 
   const resetTable = () => {
     setSearchTerm("");
@@ -186,12 +190,13 @@ export default function IndicesComparisonPage() {
     fetchData();
   };
 
-
+  // Download: show loader state
   const downloadSelectedNavData = async () => {
     if (selectedIndices.length === 0) {
       alert("Please select at least one index");
       return;
     }
+    setDownloading(true);
     try {
       const payload = { indices: selectedIndices };
       if (startDate && endDate) {
@@ -226,6 +231,8 @@ export default function IndicesComparisonPage() {
       }
     } catch (error) {
       alert(`Error downloading NAV data: ${error.message}`);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -235,27 +242,53 @@ export default function IndicesComparisonPage() {
     );
   };
 
+  // Fixed getSortedIndices: correctly handles ASC and DESC for all types and col keys
   const getSortedIndices = (indices) => {
     const { key, direction } = sortConfig;
-    if (!key || key === "#") return [...indices].sort((a, b) => a.idx - b.idx);
-
+    if (!key || key === "#" || key == null) {
+      // Always ascending idx for default
+      return [...indices].sort((a, b) =>
+        direction === "desc" ? b.idx - a.idx : a.idx - b.idx
+      );
+    }
     return [...indices].sort((a, b) => {
-      let aValue = a[key],
-        bValue = b[key];
-      if (aValue === "-" || aValue === undefined) aValue = null;
-      if (bValue === "-" || bValue === undefined) bValue = null;
+      let aValue = a[key], bValue = b[key];
+      if (aValue === "-" || aValue === undefined || aValue === null) aValue = null;
+      if (bValue === "-" || bValue === undefined || bValue === null) bValue = null;
+      // Try to compare as numbers if both parse to numbers and are not NaN/null
+      const aNum = parseFloat(aValue);
+      const bNum = parseFloat(bValue);
       if (aValue === null && bValue === null) return 0;
-      if (aValue === null) return 1;
-      if (bValue === null) return -1;
-      if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
-        return direction === "asc"
-          ? parseFloat(aValue) - parseFloat(bValue)
-          : parseFloat(bValue) - parseFloat(aValue);
+      if (aValue === null) return direction === "asc" ? 1 : -1;
+      if (bValue === null) return direction === "asc" ? -1 : 1;
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        return direction === "asc" ? aNum - bNum : bNum - aNum;
       }
-      return 0;
+      // Compare as string (case-insensitive)
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return direction === "asc"
+          ? aValue.localeCompare(bValue, undefined, { sensitivity: "base" })
+          : bValue.localeCompare(aValue, undefined, { sensitivity: "base" });
+      }
+      // Mixed, fallback to string comparison
+      return direction === "asc"
+        ? String(aValue).localeCompare(String(bValue))
+        : String(bValue).localeCompare(String(aValue));
     });
   };
 
+  // --- Select all/none support for header checkbox ---
+  // Includes only filtered shown main index rows (not breakdowns!)
+  const sortedFilteredIndices = (() => {
+    // filtered indices, after search/filter etc -- used for select all logic
+    const filteredIndices = combinedIndices.filter(
+      (item) =>
+        (selectedGroup === "All" || item.category === selectedGroup) &&
+        item.index.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    return getSortedIndices(filteredIndices);
+  })();
+  // Main indices to render in the table (for select all, header etc)
   const filteredIndices = combinedIndices.filter(
     (item) =>
       (selectedGroup === "All" || item.category === selectedGroup) &&
@@ -264,18 +297,125 @@ export default function IndicesComparisonPage() {
 
   const sorted = getSortedIndices(filteredIndices);
 
+  // Support for selecting all visible indices (not breakdowns)
+  const allVisibleSelected =
+    sorted.length > 0 &&
+    sorted.every((item) => selectedIndices.includes(item.index));
+  const someVisibleSelected =
+    sorted.some((item) => selectedIndices.includes(item.index)) && !allVisibleSelected;
+
+  // Select all handler (for visible/filtered indices)
+  const handleSelectAllVisible = (checked) => {
+    if (checked) {
+      // Add all main visible indices if not already present
+      const newSelected = [
+        ...selectedIndices,
+        ...sorted.map((item) => item.index).filter((id) => !selectedIndices.includes(id)),
+      ];
+      setSelectedIndices([...new Set(newSelected)]);
+    } else {
+      // Remove all visible indices from selection (keep other already custom breakdowns selected)
+      setSelectedIndices(
+        selectedIndices.filter((id) => !sorted.some((item) => item.index === id))
+      );
+    }
+  };
+
   // --- Table Renderer ---
   const renderTable = (columns) => (
     <Table className="border bg-background rounded-lg">
       <TableHeader className="bg-primary text-white font-bold">
         <TableRow className="bg-primary text-white font-bold">
-          <TableHead className="bg-primary text-white font-bold">#</TableHead>
-          <TableHead className="bg-primary text-white font-bold"></TableHead>
+          <TableHead
+            className="bg-primary text-white font-bold cursor-pointer select-none"
+            onClick={() => {
+              setSortConfig((prev) => {
+                const isSame = prev.key === "#" || prev.key == null;
+                return {
+                  key: "#",
+                  direction: isSame && prev.direction === "asc" ? "desc" : "asc",
+                };
+              });
+            }}
+          >
+            #
+            {sortConfig.key === "#" || !sortConfig.key
+              ? sortConfig.direction === "asc" ? " ▲" : " ▼"
+              : ""}
+          </TableHead>
+
+          {/* Header Checkbox with select all functionality */}
+          <TableHead className="bg-primary text-white font-bold">
+            <Checkbox
+              aria-label="Select All"
+              className="border-1 border-white focus:ring-1 focus:ring-white rounded"
+              checked={allVisibleSelected}
+              indeterminate={someVisibleSelected}
+              onCheckedChange={handleSelectAllVisible}
+            />
+          </TableHead>
+
           <TableHead className="bg-primary text-white font-bold">Expand</TableHead>
-          <TableHead className="bg-primary text-white font-bold">Index</TableHead>
-          <TableHead className="bg-primary text-white font-bold">Category</TableHead>
+          <TableHead
+            className="bg-primary text-white font-bold cursor-pointer select-none"
+            onClick={() => {
+              setSortConfig((prev) => {
+                const isSame = prev.key === "index";
+                return {
+                  key: "index",
+                  direction: isSame && prev.direction === "asc" ? "desc" : "asc",
+                };
+              });
+            }}
+          >
+            Index
+            {sortConfig.key === "index"
+              ? sortConfig.direction === "asc"
+                ? " ▲"
+                : " ▼"
+              : ""}
+          </TableHead>
+          <TableHead
+            className="bg-primary text-white font-bold cursor-pointer select-none"
+            onClick={() => {
+              setSortConfig((prev) => {
+                const isSame = prev.key === "category";
+                return {
+                  key: "category",
+                  direction: isSame && prev.direction === "asc" ? "desc" : "asc",
+                };
+              });
+            }}
+          >
+            Category
+            {sortConfig.key === "category"
+              ? sortConfig.direction === "asc"
+                ? " ▲"
+                : " ▼"
+              : ""}
+          </TableHead>
           {columns.map((col) => (
-            <TableHead className="bg-primary text-white font-bold" key={col}>{col}</TableHead>
+            <TableHead
+              className="bg-primary text-white font-bold cursor-pointer select-none"
+              key={col}
+              onClick={() => {
+                setSortConfig((prev) => {
+                  // Toggle direction if clicking same col, otherwise asc
+                  const isSame = prev.key === col;
+                  return {
+                    key: col,
+                    direction: isSame && prev.direction === "asc" ? "desc" : "asc",
+                  };
+                });
+              }}
+            >
+              {col}
+              {sortConfig.key === col
+                ? sortConfig.direction === "asc"
+                  ? " ▲"
+                  : " ▼"
+                : ""}
+            </TableHead>
           ))}
         </TableRow>
       </TableHeader>
@@ -294,7 +434,7 @@ export default function IndicesComparisonPage() {
                 />
               </TableCell>
               <TableCell>
-                {allIndicesGroups["Qode Strategies"].includes(item.index) && (item.index !== 'QGF-LIVE') && (
+                {allIndicesGroups["Qode Strategies"].includes(item.index) && (item.index !== "QGF-LIVE") && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -346,20 +486,22 @@ export default function IndicesComparisonPage() {
                         </>
                       ) : (
                         <>
-                        <TableCell />
-                        <TableCell />
+                          <TableCell />
+                          <TableCell />
                         </>
                       )}
-                      
-                      <TableCell className="text-xs text-gray-600 italic">{seg.label || "-"}</TableCell>
+
+                      <TableCell className="text-xs text-gray-600 italic">
+                        {seg.label || "-"}
+                      </TableCell>
                       <TableCell></TableCell>
                       {columns.map((col) => (
                         <TableCell className="text-xs text-gray-600 italic" key={col}>
                           {seg.trailing[col] !== undefined && seg.trailing[col] !== null
                             ? `${seg.trailing[col]}%`
                             : seg.metrics[col] !== undefined && seg.metrics[col] !== null
-                              ? `${seg.metrics[col]}%`
-                              : "-"}
+                            ? `${seg.metrics[col]}%`
+                            : "-"}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -439,7 +581,12 @@ export default function IndicesComparisonPage() {
         <Button onClick={fetchData} disabled={!startDate || !endDate}>
           Calculate Custom Returns
         </Button>
-        <Button onClick={downloadSelectedNavData} disabled={selectedIndices.length === 0}>
+        <Button
+          onClick={downloadSelectedNavData}
+          disabled={selectedIndices.length === 0 || downloading}
+          className="flex items-center gap-1"
+        >
+          {downloading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           Download CSV ({selectedIndices.length})
         </Button>
         <Button variant="outline" onClick={resetTable}>

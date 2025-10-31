@@ -114,6 +114,9 @@ export default function ClientTracker() {
   const [breakdowns, setBreakdowns] = useState({});
   const [loadingBreakdown, setLoadingBreakdown] = useState({});
 
+  // --- NEW: Download loading state ---
+  const [loadingCsv, setLoadingCsv] = useState(false);
+
   // --- Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
@@ -192,6 +195,7 @@ export default function ClientTracker() {
       alert("Please select at least one index");
       return;
     }
+    setLoadingCsv(true);
     try {
       const payload = { account_code: selectAccountCode };
       const response = await fetch(`${PYTHON_BASE_URL}/api/clienttracker/trailing_returns/true`, {
@@ -221,6 +225,8 @@ export default function ClientTracker() {
       }
     } catch (error) {
       alert(`Error downloading NAV data: ${error.message}`);
+    } finally {
+      setLoadingCsv(false);
     }
   };
 
@@ -417,15 +423,25 @@ export default function ClientTracker() {
       {/* --- Trailing Returns Table --- */}
       {activeView === "returns" && (
         <div>
-          <div className="flex flex-row gap-2">
+          <div className="flex flex-row gap-2 items-center">
             <Input
               placeholder="Search returns..."
               value={returnsSearch}
               onChange={(e) => setReturnsSearch(e.target.value)}
               className="max-w-sm mb-4 bg-background rounded-lg"
             />
-            <Button onClick={downloadSelectedNavData} disabled={selectAccountCode.length === 0}>
-              Download CSV ({selectAccountCode.length})
+            <Button
+              onClick={downloadSelectedNavData}
+              disabled={selectAccountCode.length === 0 || loadingCsv}
+            >
+              {loadingCsv ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  Downloading...
+                </>
+              ) : (
+                <>Download CSV ({selectAccountCode.length})</>
+              )}
             </Button>
           </div>
 

@@ -57,9 +57,10 @@ const IndexTable = () => {
           peak: typeof item.peak === "number" ? item.peak : "N/A",
           currentDD:
             typeof item.currentDD === "number"
-              ? `${item.currentDD}%`
+              ? `${item.currentDD.toFixed(2)}`
               : "N/A",
         }));
+        console.log(normalized)
 
         // ✅ Assign fixed global idx once based on allIndicesGroups order
         const allIndices = Object.values(allIndicesGroups).flat();

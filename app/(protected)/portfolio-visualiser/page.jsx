@@ -192,7 +192,7 @@ const PortfolioIndex = () => {
           <TabsTrigger
             value="input"
             className="data-[state=active]:text-[color:var(--primary)] 
-               data-[state=inactive]:text-[color:var(--background)]"
+            data-[state=inactive]:text-[color:var(--background)]"
           >
             Portfolio Input
           </TabsTrigger>
@@ -200,7 +200,7 @@ const PortfolioIndex = () => {
             value="results"
             disabled={!resultData || resultData.length === 0}
             className="data-[state=active]:text-[color:var(--primary)] 
-               data-[state=inactive]:text-[color:var(--background)]"
+            data-[state=inactive]:text-[color:var(--background)]"
           >
             Results
           </TabsTrigger>

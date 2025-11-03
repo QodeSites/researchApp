@@ -315,13 +315,6 @@ export default function MonthlyReport() {
 
       {combinedData.length > 0 && (
         <div>
-          {calculationDates && (
-            <p className="text-sm text-gray-500 mb-2">
-              Data from {formatDate(calculationDates.start)} to{" "}
-              {formatDate(calculationDates.end)}
-            </p>
-          )}
-
           <Input
             placeholder="Search table..."
             value={tableSearchTerm}

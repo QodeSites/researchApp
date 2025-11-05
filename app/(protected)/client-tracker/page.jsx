@@ -117,6 +117,9 @@ export default function ClientTracker() {
   // --- NEW: Download loading state ---
   const [loadingCsv, setLoadingCsv] = useState(false);
 
+  // --- Nested expands: for options row ---
+  const [optionsExpandedRows, setOptionsExpandedRows] = useState({}); // { [nuvamaCode]: boolean }
+
   // --- Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
@@ -234,6 +237,14 @@ export default function ClientTracker() {
     setSelectedAccountCode((prev) =>
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
+  };
+
+  // For the nested dropdown in "Options" segment per account
+  const toggleOptionsExpand = (nuvamaCode) => {
+    setOptionsExpandedRows((prev) => ({
+      ...prev,
+      [nuvamaCode]: !prev[nuvamaCode]
+    }));
   };
 
   // --- Filtering ---
@@ -480,9 +491,7 @@ export default function ClientTracker() {
                     <React.Fragment key={item.idx}>
                       {/* --- Main Row --- */}
                       <TableRow>
-                        {/* Expand button in first column */}
                         <TableCell>{item.idx}</TableCell>
-                        
                         <TableCell>
                           <Checkbox
                             className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
@@ -541,127 +550,362 @@ export default function ClientTracker() {
                             Array.isArray(
                               breakdowns[item.nuvama_code]?.returns
                             ) ? (
+                            // ---- Custom breakdown mapping ----
                             breakdowns[item.nuvama_code].returns.map(
-                              (seg, j) => (
-                                <TableRow
-                                  key={`${item.nuvama_code}-breakdown-${j}`}
-                                  className="bg-muted/30 text-sm"
-                                >
-                                  {/* Empty cells for alignment: expand, idx, code, account, inception_date */}
-                                  <TableCell />
-                                  {seg.label !== "Total" ? (
-                                      <>
+                              (seg, j) => {
+                                if (seg.label === "Options") {
+                                  const longOptionsIdx = breakdowns[item.nuvama_code].returns.findIndex(s => s.label === "Long Options");
+                                  const dynamicPutsIdx = breakdowns[item.nuvama_code].returns.findIndex(s => s.label === "Dynamic Puts");
+                                  const childRows = [];
+                                  if (longOptionsIdx !== -1)
+                                    childRows.push({ ...breakdowns[item.nuvama_code].returns[longOptionsIdx], __idx: longOptionsIdx });
+                                  if (dynamicPutsIdx !== -1)
+                                    childRows.push({ ...breakdowns[item.nuvama_code].returns[dynamicPutsIdx], __idx: dynamicPutsIdx });
+                                  return (
+                                    <React.Fragment key={`${item.nuvama_code}-breakdown-options`}>
+                                      <TableRow
+                                        className="text-sm bg-grey/60"
+                                      >
+                                        <TableCell />
+                                        {/* Enable selection for "Options" only if seg.label !== "Total" (here always true) */}
                                         <TableCell>
                                           <Checkbox
                                             className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
-                                            checked={selectAccountCode.includes(`${item.nuvama_code}-${seg.label}`)}
-                                            onCheckedChange={() => toggleIndexSelection(`${item.nuvama_code}-${seg.label}`)}
+                                            checked={selectAccountCode.includes(`${item.nuvama_code}-Options`)}
+                                            onCheckedChange={() => toggleIndexSelection(`${item.nuvama_code}-Options`)}
                                           />
                                         </TableCell>
+                                        {/* carrot for opening Long Options & Dynamic Puts */}
+                                        <TableCell>
+                                          <div className="grid justify-items-center">
+                                            <Button
+                                              variant="ghost"
+                                              size="xs"
+                                              className="px-[2px]"
+                                              onClick={() => toggleOptionsExpand(item.nuvama_code)}
+                                            >
+                                              {optionsExpandedRows[item.nuvama_code] ? "▾" : "▸"}
+                                            </Button>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">{seg.label || "-"}</TableCell>
                                         <TableCell />
-                                      </>
-                                    ) : (
-                                      <>
-                                      <TableCell />
-                                      <TableCell />
-                                      </>
-                                  )}
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.label || "-"}
-                                  </TableCell>
-                                  <TableCell />
-                                  <TableCell />
-                                  <TableCell />
-                                  {/* Performance columns aligned with parent */}
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.trailing &&
-                                    seg.trailing["10D"] !== undefined &&
-                                    seg.trailing["10D"] !== null
-                                      ? formatNumber(seg.trailing["10D"], "%")
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.trailing &&
-                                    seg.trailing["1M"] !== undefined &&
-                                    seg.trailing["1M"] !== null
-                                      ? formatNumber(seg.trailing["1M"], "%")
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.trailing &&
-                                    seg.trailing["3M"] !== undefined &&
-                                    seg.trailing["3M"] !== null
-                                      ? formatNumber(seg.trailing["3M"], "%")
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.trailing &&
-                                    seg.trailing["6M"] !== undefined &&
-                                    seg.trailing["6M"] !== null
-                                      ? formatNumber(seg.trailing["6M"], "%")
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.trailing &&
-                                    seg.trailing["1Y"] !== undefined &&
-                                    seg.trailing["1Y"] !== null
-                                      ? formatNumber(seg.trailing["1Y"], "%")
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.trailing &&
-                                    seg.trailing["2Y"] !== undefined &&
-                                    seg.trailing["2Y"] !== null
-                                      ? formatNumber(seg.trailing["2Y"], "%")
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.trailing &&
-                                    seg.trailing["5Y"] !== undefined &&
-                                    seg.trailing["5Y"] !== null
-                                      ? formatNumber(seg.trailing["5Y"], "%")
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.metrics &&
-                                    seg.metrics.returns !== undefined &&
-                                    seg.metrics.returns !== null
-                                      ? formatNumber(seg.metrics.returns, "%")
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.metrics &&
-                                    seg.metrics.nifty_cagr !== undefined &&
-                                    seg.metrics.nifty_cagr !== null
-                                      ? formatNumber(
-                                          seg.metrics.nifty_cagr,
-                                          "%"
-                                        )
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.metrics &&
-                                    seg.metrics.max_drawdown !== undefined &&
-                                    seg.metrics.max_drawdown !== null
-                                      ? formatNumber(
-                                          seg.metrics.max_drawdown,
-                                          "%"
-                                        )
-                                      : "-"}
-                                  </TableCell>
-                                  <TableCell className="text-xs text-gray-600 italic">
-                                    {seg.metrics &&
-                                    seg.metrics.current_drawdown !==
-                                      undefined &&
-                                    seg.metrics.current_drawdown !== null
-                                      ? formatNumber(
-                                          seg.metrics.current_drawdown,
-                                          "%"
-                                        )
-                                      : "-"}
-                                  </TableCell>
-                                </TableRow>
-                              )
+                                        <TableCell />
+                                        <TableCell />
+                                        {/* Performance columns aligned with parent */}
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.trailing &&
+                                          seg.trailing["10D"] !== undefined &&
+                                          seg.trailing["10D"] !== null
+                                            ? formatNumber(seg.trailing["10D"], "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.trailing &&
+                                          seg.trailing["1M"] !== undefined &&
+                                          seg.trailing["1M"] !== null
+                                            ? formatNumber(seg.trailing["1M"], "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.trailing &&
+                                          seg.trailing["3M"] !== undefined &&
+                                          seg.trailing["3M"] !== null
+                                            ? formatNumber(seg.trailing["3M"], "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.trailing &&
+                                          seg.trailing["6M"] !== undefined &&
+                                          seg.trailing["6M"] !== null
+                                            ? formatNumber(seg.trailing["6M"], "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.trailing &&
+                                          seg.trailing["1Y"] !== undefined &&
+                                          seg.trailing["1Y"] !== null
+                                            ? formatNumber(seg.trailing["1Y"], "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.trailing &&
+                                          seg.trailing["2Y"] !== undefined &&
+                                          seg.trailing["2Y"] !== null
+                                            ? formatNumber(seg.trailing["2Y"], "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.trailing &&
+                                          seg.trailing["5Y"] !== undefined &&
+                                          seg.trailing["5Y"] !== null
+                                            ? formatNumber(seg.trailing["5Y"], "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.metrics &&
+                                          seg.metrics.returns !== undefined &&
+                                          seg.metrics.returns !== null
+                                            ? formatNumber(seg.metrics.returns, "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.metrics &&
+                                          seg.metrics.nifty_cagr !== undefined &&
+                                          seg.metrics.nifty_cagr !== null
+                                            ? formatNumber(seg.metrics.nifty_cagr, "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.metrics &&
+                                          seg.metrics.max_drawdown !== undefined &&
+                                          seg.metrics.max_drawdown !== null
+                                            ? formatNumber(seg.metrics.max_drawdown, "%")
+                                            : "-"}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-gray-600 italic">
+                                          {seg.metrics &&
+                                          seg.metrics.current_drawdown !== undefined &&
+                                          seg.metrics.current_drawdown !== null
+                                            ? formatNumber(seg.metrics.current_drawdown, "%")
+                                            : "-"}
+                                        </TableCell>
+                                      </TableRow>
+                                      {/* Nested Long Options and Dynamic Puts rows (only if expanded) */}
+                                      {optionsExpandedRows[item.nuvama_code] && childRows.map(childSeg => (
+                                        <TableRow
+                                          key={`${item.nuvama_code}-breakdown-${childSeg.label}`}
+                                          className={`text-sm ${(childSeg.label === "Dynamic Puts" || childSeg.label === "Long Options") ? "bg-muted/40" : ""}`}
+                                        >
+                                          {/* First cell for nested indent */}
+                                          <TableCell />
+                                          {/* Checkbox for nested item */}
+                                          <TableCell>
+                                            <Checkbox
+                                              className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
+                                              checked={selectAccountCode.includes(`${item.nuvama_code}-${childSeg.label}`)}
+                                              onCheckedChange={() => toggleIndexSelection(`${item.nuvama_code}-${childSeg.label}`)}
+                                            />
+                                          </TableCell>
+                                          <TableCell />
+                                          {/* Label with more indent */}
+                                          <TableCell className={`text-xs text-gray-600 italic pl-6`}>
+                                            {childSeg.label || "-"}
+                                          </TableCell>
+                                          <TableCell />
+                                          <TableCell />
+                                          <TableCell />
+                                          {/* Performance columns aligned with parent */}
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.trailing &&
+                                            childSeg.trailing["10D"] !== undefined &&
+                                            childSeg.trailing["10D"] !== null
+                                              ? formatNumber(childSeg.trailing["10D"], "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.trailing &&
+                                            childSeg.trailing["1M"] !== undefined &&
+                                            childSeg.trailing["1M"] !== null
+                                              ? formatNumber(childSeg.trailing["1M"], "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.trailing &&
+                                            childSeg.trailing["3M"] !== undefined &&
+                                            childSeg.trailing["3M"] !== null
+                                              ? formatNumber(childSeg.trailing["3M"], "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.trailing &&
+                                            childSeg.trailing["6M"] !== undefined &&
+                                            childSeg.trailing["6M"] !== null
+                                              ? formatNumber(childSeg.trailing["6M"], "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.trailing &&
+                                            childSeg.trailing["1Y"] !== undefined &&
+                                            childSeg.trailing["1Y"] !== null
+                                              ? formatNumber(childSeg.trailing["1Y"], "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.trailing &&
+                                            childSeg.trailing["2Y"] !== undefined &&
+                                            childSeg.trailing["2Y"] !== null
+                                              ? formatNumber(childSeg.trailing["2Y"], "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.trailing &&
+                                            childSeg.trailing["5Y"] !== undefined &&
+                                            childSeg.trailing["5Y"] !== null
+                                              ? formatNumber(childSeg.trailing["5Y"], "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.metrics &&
+                                            childSeg.metrics.returns !== undefined &&
+                                            childSeg.metrics.returns !== null
+                                              ? formatNumber(childSeg.metrics.returns, "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.metrics &&
+                                            childSeg.metrics.nifty_cagr !== undefined &&
+                                            childSeg.metrics.nifty_cagr !== null
+                                              ? formatNumber(childSeg.metrics.nifty_cagr, "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.metrics &&
+                                            childSeg.metrics.max_drawdown !== undefined &&
+                                            childSeg.metrics.max_drawdown !== null
+                                              ? formatNumber(childSeg.metrics.max_drawdown, "%")
+                                              : "-"}
+                                          </TableCell>
+                                          <TableCell className="text-xs text-gray-600 italic">
+                                            {childSeg.metrics &&
+                                            childSeg.metrics.current_drawdown !== undefined &&
+                                            childSeg.metrics.current_drawdown !== null
+                                              ? formatNumber(childSeg.metrics.current_drawdown, "%")
+                                              : "-"}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </React.Fragment>
+                                  );
+                                }
+                                if (seg.label === "Long Options" || seg.label === "Dynamic Puts") {
+                                  // These rows will be handled in the nested dropdown of Options, so skip them here
+                                  return null;
+                                }
+                                // Regular row (not Options/child)
+                                return (
+                                  <TableRow
+                                    key={`${item.nuvama_code}-breakdown-${j}`}
+                                    className={`text-sm ${seg.label === "Dynamic Puts" || seg.label === "Long Options" ? "bg-muted/60" : "bg-grey/60"}`}
+                                  >
+                                    {/* Empty cells for alignment: expand, idx, code, account, inception_date */}
+                                    <TableCell />
+                                    {seg.label !== "Total" ? (
+                                        <>
+                                          <TableCell>
+                                            <Checkbox
+                                              className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
+                                              checked={selectAccountCode.includes(`${item.nuvama_code}-${seg.label}`)}
+                                              onCheckedChange={() => toggleIndexSelection(`${item.nuvama_code}-${seg.label}`)}
+                                            />
+                                          </TableCell>
+                                          <TableCell />
+                                        </>
+                                      ) : (
+                                        <>
+                                        <TableCell />
+                                        <TableCell />
+                                        </>
+                                    )}
+                                    <TableCell
+                                      className={`text-xs text-gray-600 italic${(seg.label === "Dynamic Puts" || seg.label === "Long Options") ? " pl-6" : ""}`}
+                                    >
+                                      {seg.label || "-"}
+                                    </TableCell>
+                                    <TableCell />
+                                    <TableCell />
+                                    <TableCell />
+                                    {/* Performance columns aligned with parent */}
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.trailing &&
+                                      seg.trailing["10D"] !== undefined &&
+                                      seg.trailing["10D"] !== null
+                                        ? formatNumber(seg.trailing["10D"], "%")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.trailing &&
+                                      seg.trailing["1M"] !== undefined &&
+                                      seg.trailing["1M"] !== null
+                                        ? formatNumber(seg.trailing["1M"], "%")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.trailing &&
+                                      seg.trailing["3M"] !== undefined &&
+                                      seg.trailing["3M"] !== null
+                                        ? formatNumber(seg.trailing["3M"], "%")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.trailing &&
+                                      seg.trailing["6M"] !== undefined &&
+                                      seg.trailing["6M"] !== null
+                                        ? formatNumber(seg.trailing["6M"], "%")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.trailing &&
+                                      seg.trailing["1Y"] !== undefined &&
+                                      seg.trailing["1Y"] !== null
+                                        ? formatNumber(seg.trailing["1Y"], "%")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.trailing &&
+                                      seg.trailing["2Y"] !== undefined &&
+                                      seg.trailing["2Y"] !== null
+                                        ? formatNumber(seg.trailing["2Y"], "%")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.trailing &&
+                                      seg.trailing["5Y"] !== undefined &&
+                                      seg.trailing["5Y"] !== null
+                                        ? formatNumber(seg.trailing["5Y"], "%")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.metrics &&
+                                      seg.metrics.returns !== undefined &&
+                                      seg.metrics.returns !== null
+                                        ? formatNumber(seg.metrics.returns, "%")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.metrics &&
+                                      seg.metrics.nifty_cagr !== undefined &&
+                                      seg.metrics.nifty_cagr !== null
+                                        ? formatNumber(
+                                            seg.metrics.nifty_cagr,
+                                            "%"
+                                          )
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.metrics &&
+                                      seg.metrics.max_drawdown !== undefined &&
+                                      seg.metrics.max_drawdown !== null
+                                        ? formatNumber(
+                                            seg.metrics.max_drawdown,
+                                            "%"
+                                          )
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600 italic">
+                                      {seg.metrics &&
+                                      seg.metrics.current_drawdown !==
+                                        undefined &&
+                                      seg.metrics.current_drawdown !== null
+                                        ? formatNumber(
+                                            seg.metrics.current_drawdown,
+                                            "%"
+                                          )
+                                        : "-"}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              }
                             )
                           ) : (
                             <TableRow>

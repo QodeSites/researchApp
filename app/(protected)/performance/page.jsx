@@ -1,12 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import formatDate from "@/utils/formatDate";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -90,9 +85,29 @@ export default function IndicesComparisonPage() {
   const [downloading, setDownloading] = useState(false);
 
   const shortTermCols = [
-    "1D", "2D", "3D", "1W", "1M", "3M", "6M", "9M", "1Y", "Drawdown",
+    "1D",
+    "2D",
+    "3D",
+    "1W",
+    "1M",
+    "3M",
+    "6M",
+    "9M",
+    "1Y",
+    "Drawdown",
   ];
   const longTermCols = ["1Y", "2Y", "3Y", "4Y", "5Y", "CDR", "CDR_MDD"];
+
+  // --- Nested expands: for options row ---
+  const [optionsExpandedRows, setOptionsExpandedRows] = useState({});
+
+  // Keep track of which options row dropdowns are open
+  const toggleOptionsExpand = (nuvamaCode) => {
+    setOptionsExpandedRows((prev) => ({
+      ...prev,
+      [nuvamaCode]: !prev[nuvamaCode],
+    }));
+  };
 
   // --- Fetch Data ---
   const fetchData = async () => {
@@ -104,11 +119,14 @@ export default function IndicesComparisonPage() {
         payload.endDate = endDate;
       }
 
-      const response = await fetch(`${PYTHON_BASE_URL}/api/clienttracker/indices/false`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${PYTHON_BASE_URL}/api/clienttracker/indices/false`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const result = await response.json();
 
@@ -162,11 +180,14 @@ export default function IndicesComparisonPage() {
           payload.startDate = startDate;
           payload.endDate = endDate;
         }
-        const res = await fetch(`${PYTHON_BASE_URL}/api/clienttracker/returns_breakdown`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const res = await fetch(
+          `${PYTHON_BASE_URL}/api/clienttracker/returns_breakdown`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
         const json = await res.json();
         setBreakdowns((prev) => ({ ...prev, [indexName]: json }));
       } catch (err) {
@@ -203,11 +224,14 @@ export default function IndicesComparisonPage() {
         payload.startDate = startDate;
         payload.endDate = endDate;
       }
-      const response = await fetch(`${PYTHON_BASE_URL}/api/clienttracker/indices/true`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${PYTHON_BASE_URL}/api/clienttracker/indices/true`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const result = await response.json();
       if (response.ok) {
@@ -252,9 +276,12 @@ export default function IndicesComparisonPage() {
       );
     }
     return [...indices].sort((a, b) => {
-      let aValue = a[key], bValue = b[key];
-      if (aValue === "-" || aValue === undefined || aValue === null) aValue = null;
-      if (bValue === "-" || bValue === undefined || bValue === null) bValue = null;
+      let aValue = a[key],
+        bValue = b[key];
+      if (aValue === "-" || aValue === undefined || aValue === null)
+        aValue = null;
+      if (bValue === "-" || bValue === undefined || bValue === null)
+        bValue = null;
       // Try to compare as numbers if both parse to numbers and are not NaN/null
       const aNum = parseFloat(aValue);
       const bNum = parseFloat(bValue);
@@ -302,7 +329,8 @@ export default function IndicesComparisonPage() {
     sorted.length > 0 &&
     sorted.every((item) => selectedIndices.includes(item.index));
   const someVisibleSelected =
-    sorted.some((item) => selectedIndices.includes(item.index)) && !allVisibleSelected;
+    sorted.some((item) => selectedIndices.includes(item.index)) &&
+    !allVisibleSelected;
 
   // Select all handler (for visible/filtered indices)
   const handleSelectAllVisible = (checked) => {
@@ -310,13 +338,17 @@ export default function IndicesComparisonPage() {
       // Add all main visible indices if not already present
       const newSelected = [
         ...selectedIndices,
-        ...sorted.map((item) => item.index).filter((id) => !selectedIndices.includes(id)),
+        ...sorted
+          .map((item) => item.index)
+          .filter((id) => !selectedIndices.includes(id)),
       ];
       setSelectedIndices([...new Set(newSelected)]);
     } else {
       // Remove all visible indices from selection (keep other already custom breakdowns selected)
       setSelectedIndices(
-        selectedIndices.filter((id) => !sorted.some((item) => item.index === id))
+        selectedIndices.filter(
+          (id) => !sorted.some((item) => item.index === id)
+        )
       );
     }
   };
@@ -333,14 +365,17 @@ export default function IndicesComparisonPage() {
                 const isSame = prev.key === "#" || prev.key == null;
                 return {
                   key: "#",
-                  direction: isSame && prev.direction === "asc" ? "desc" : "asc",
+                  direction:
+                    isSame && prev.direction === "asc" ? "desc" : "asc",
                 };
               });
             }}
           >
             #
             {sortConfig.key === "#" || !sortConfig.key
-              ? sortConfig.direction === "asc" ? " ▲" : " ▼"
+              ? sortConfig.direction === "asc"
+                ? " ▲"
+                : " ▼"
               : ""}
           </TableHead>
 
@@ -355,7 +390,9 @@ export default function IndicesComparisonPage() {
             />
           </TableHead>
 
-          <TableHead className="bg-primary text-white font-bold">Expand</TableHead>
+          <TableHead className="bg-primary text-white font-bold">
+            Expand
+          </TableHead>
           <TableHead
             className="bg-primary text-white font-bold cursor-pointer select-none"
             onClick={() => {
@@ -363,7 +400,8 @@ export default function IndicesComparisonPage() {
                 const isSame = prev.key === "index";
                 return {
                   key: "index",
-                  direction: isSame && prev.direction === "asc" ? "desc" : "asc",
+                  direction:
+                    isSame && prev.direction === "asc" ? "desc" : "asc",
                 };
               });
             }}
@@ -382,7 +420,8 @@ export default function IndicesComparisonPage() {
                 const isSame = prev.key === "category";
                 return {
                   key: "category",
-                  direction: isSame && prev.direction === "asc" ? "desc" : "asc",
+                  direction:
+                    isSame && prev.direction === "asc" ? "desc" : "asc",
                 };
               });
             }}
@@ -404,7 +443,8 @@ export default function IndicesComparisonPage() {
                   const isSame = prev.key === col;
                   return {
                     key: col,
-                    direction: isSame && prev.direction === "asc" ? "desc" : "asc",
+                    direction:
+                      isSame && prev.direction === "asc" ? "desc" : "asc",
                   };
                 });
               }}
@@ -434,25 +474,34 @@ export default function IndicesComparisonPage() {
                 />
               </TableCell>
               <TableCell>
-                {allIndicesGroups["Qode Strategies"].includes(item.index) && (item.index !== "QGF-LIVE") && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleBreakdown(item.index)}
-                  >
-                    {expandedRows.has(item.index) ? "▾" : "▸"}
-                  </Button>
-                )}
+                {allIndicesGroups["Qode Strategies"].includes(item.index) &&
+                  item.index !== "QGF-LIVE" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleBreakdown(item.index)}
+                    >
+                      {expandedRows.has(item.index) ? "▾" : "▸"}
+                    </Button>
+                  )}
               </TableCell>
               <TableCell>{item.index}</TableCell>
               <TableCell>{item.category}</TableCell>
               {columns.map((col) => (
                 <TableCell
                   key={col}
-                  className={item[col] && parseFloat(item[col]) < 0 ? "text-red-500" : ""}
+                  className={
+                    item[col] && parseFloat(item[col]) < 0 ? "text-red-500" : ""
+                  }
                 >
-                  {item[col] !== undefined && item[col] !== null && item[col] !== ""
-                    ? `${!isNaN(Number(item[col])) ? Number(item[col]).toFixed(2) : item[col]}%`
+                  {item[col] !== undefined &&
+                  item[col] !== null &&
+                  item[col] !== ""
+                    ? `${
+                        !isNaN(Number(item[col]))
+                          ? Number(item[col]).toFixed(2)
+                          : item[col]
+                      }%`
                     : "-"}
                 </TableCell>
               ))}
@@ -463,52 +512,201 @@ export default function IndicesComparisonPage() {
               <>
                 {loadingBreakdown[item.index] ? (
                   <TableRow>
-                    <TableCell colSpan={columns.length + 5} className="text-center py-2">
+                    <TableCell
+                      colSpan={columns.length + 5}
+                      className="text-center py-2"
+                    >
                       <Loader2 className="h-4 w-4 animate-spin text-primary inline mr-2" />
                       Loading breakdown...
                     </TableCell>
                   </TableRow>
                 ) : breakdowns[item.index] &&
                   Array.isArray(breakdowns[item.index].returns) ? (
-                  breakdowns[item.index].returns.map((seg, j) => (
-                    <TableRow key={`${item.index}-segment-${j}`} className="bg-muted/30 text-sm">
-                      <TableCell />
-                      {seg.label !== "Total" ? (
-                        <>
-                          <TableCell>
-                            <Checkbox
-                              className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
-                              checked={selectedIndices.includes(`${item.index}-${seg.label}`)}
-                              onCheckedChange={() => toggleIndexSelection(`${item.index}-${seg.label}`)}
-                            />
-                          </TableCell>
-                          <TableCell />
-                        </>
-                      ) : (
-                        <>
-                          <TableCell />
-                          <TableCell />
-                        </>
-                      )}
+                  breakdowns[item.index].returns.map((seg, j) => {
+                    if (seg.label === "Options") {
+                      // Gather both "Dynamic Puts" and "Long Options" segments
+                      const subSegments = breakdowns[item.index].returns.filter(
+                        (s) =>
+                          s.label === "Dynamic Puts" ||
+                          s.label === "Long Options"
+                      );
+                      return (
+                        <React.Fragment
+                          key={`${item.index}-segment-options-dropdown`}
+                        >
+                          <TableRow>
+                            <TableCell />
+                            <TableCell>
+                              <Checkbox
+                                className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
+                                checked={selectedIndices.includes(
+                                  `${item.index}-${seg.label}`
+                                )}
+                                onCheckedChange={() =>
+                                  toggleIndexSelection(
+                                    `${item.index}-${seg.label}`
+                                  )
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="grid justify-items-center">
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  className="px-[2px]"
+                                  onClick={() =>
+                                    toggleOptionsExpand(`${item.index}-options`)
+                                  }
+                                >
+                                  {optionsExpandedRows[`${item.index}-options`]
+                                    ? "▾"
+                                    : "▸"}
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs text-gray-600 italic">
+                              Options
+                            </TableCell>
+                            <TableCell></TableCell>
+                            {columns.map((col) => (
+                              <TableCell
+                                key={col}
+                                className="text-xs text-gray-600 italic"
+                              >
+                                {seg.trailing &&
+                                seg.trailing[col] !== undefined &&
+                                seg.trailing[col] !== null
+                                  ? `${seg.trailing[col]}%`
+                                  : seg.metrics &&
+                                    seg.metrics[col] !== undefined &&
+                                    seg.metrics[col] !== null
+                                  ? `${seg.metrics[col]}%`
+                                  : "-"}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                          {optionsExpandedRows[`${item.index}-options`] &&
+                            subSegments.map((subSeg, k) => (
+                              <TableRow
+                                key={`${item.index}-options-subrow-${k}`}
+                                className="bg-muted/40 text-xs"
+                              >
+                                <TableCell />
+                                <TableCell>
+                                  <Checkbox
+                                    className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
+                                    checked={selectedIndices.includes(
+                                      `${item.index}-${subSeg.label}`
+                                    )}
+                                    onCheckedChange={() =>
+                                      toggleIndexSelection(
+                                        `${item.index}-${subSeg.label}`
+                                      )
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell />
+                                <TableCell
+                                  className={`text-xs text-gray-600 italic pl-6`}
+                                >
+                                  {subSeg.label}
+                                </TableCell>
+                                <TableCell></TableCell>
+                                {columns.map((col) => (
+                                  <TableCell
+                                    className="text-xs text-gray-600 italic"
+                                    key={col}
+                                  >
+                                    {subSeg.trailing &&
+                                    subSeg.trailing[col] !== undefined &&
+                                    subSeg.trailing[col] !== null
+                                      ? `${subSeg.trailing[col]}%`
+                                      : subSeg.metrics &&
+                                        subSeg.metrics[col] !== undefined &&
+                                        subSeg.metrics[col] !== null
+                                      ? `${subSeg.metrics[col]}%`
+                                      : "-"}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                        </React.Fragment>
+                      );
+                    }
 
-                      <TableCell className="text-xs text-gray-600 italic">
-                        {seg.label || "-"}
-                      </TableCell>
-                      <TableCell></TableCell>
-                      {columns.map((col) => (
-                        <TableCell className="text-xs text-gray-600 italic" key={col}>
-                          {seg.trailing[col] !== undefined && seg.trailing[col] !== null
-                            ? `${seg.trailing[col]}%`
-                            : seg.metrics[col] !== undefined && seg.metrics[col] !== null
-                            ? `${seg.metrics[col]}%`
-                            : "-"}
+                    if (seg.label === "Long Options" || seg.label === "Dynamic Puts") {
+                      // These rows will be handled in the nested dropdown of Options, so skip them here
+                      return null;
+                    }
+
+                    // Render other breakdown segments as before
+                    return (
+                      <TableRow
+                        key={`${item.index}-segment-${j}`}
+                        className={`text-sm ${seg.label === "Dynamic Puts" || seg.label === "Long Options" ? "bg-muted/60" : "bg-grey/60"}`}
+                        >
+                        <TableCell />
+                        {seg.label !== "Total" ? (
+                          <>
+                            <TableCell>
+                              <Checkbox
+                                className="border border-primary focus:ring-2 focus:ring-primary focus:outline-none rounded"
+                                checked={selectedIndices.includes(
+                                  `${item.index}-${seg.label}`
+                                )}
+                                onCheckedChange={() =>
+                                  toggleIndexSelection(
+                                    `${item.index}-${seg.label}`
+                                  )
+                                }
+                              />
+                            </TableCell>
+                            <TableCell />
+                          </>
+                        ) : (
+                          <>
+                            <TableCell />
+                            <TableCell />
+                          </>
+                        )}
+
+                        <TableCell
+                          className={`text-xs text-gray-600 italic${
+                            seg.label === "Dynamic Puts" ||
+                            seg.label === "Long Options"
+                              ? " pl-6"
+                              : ""
+                          }`}
+                        >
+                          {seg.label || "-"}
                         </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                        <TableCell></TableCell>
+                        {columns.map((col) => (
+                          <TableCell
+                            className="text-xs text-gray-600 italic"
+                            key={col}
+                          >
+                            {seg.trailing &&
+                            seg.trailing[col] !== undefined &&
+                            seg.trailing[col] !== null
+                              ? `${seg.trailing[col]}%`
+                              : seg.metrics &&
+                                seg.metrics[col] !== undefined &&
+                                seg.metrics[col] !== null
+                              ? `${seg.metrics[col]}%`
+                              : "-"}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={columns.length + 5} className="text-center text-sm">
+                    <TableCell
+                      colSpan={columns.length + 5}
+                      className="text-center text-sm"
+                    >
                       No breakdown data available.
                     </TableCell>
                   </TableRow>
@@ -522,7 +720,11 @@ export default function IndicesComparisonPage() {
   );
 
   if (loading)
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
   if (error) return <Alert variant="destructive">{error}</Alert>;
 
   return (

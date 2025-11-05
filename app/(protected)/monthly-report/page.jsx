@@ -25,6 +25,11 @@ import {
 } from "@/components/ui/select";
 import allIndicesGroups from "@/utils/allIndicesGroups";
 
+const PYTHON_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://calculator.qodeinvest.com"
+    : "http://localhost:5080";
+
 // --- Main ---
 export default function MonthlyReport() {
   const [indicesData, setIndicesData] = useState(null);
@@ -45,7 +50,8 @@ export default function MonthlyReport() {
   const [tableSearchTerm, setTableSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
-  const [combinedData, setCombinedData] = useState([]); // 🔹 fixed order data
+  const [combinedData, setCombinedData] = useState([]); // fixed order data for indices
+  const [mutualFundData, setMutualFundData] = useState([]); // for mutual funds
 
   const returnPeriods = [
     "1M",
@@ -82,12 +88,19 @@ export default function MonthlyReport() {
         `/api/monthly-report?year=${selectedYear}&month=${selectedMonth}`
       );
       const result = await response.json();
-      if (response.ok) {
+
+      // fetch mutual funds returns from python backend
+      const mutual_fund_response = await fetch(
+        `${PYTHON_BASE_URL}/api/clienttracker/mutual_funds_returns/year/${selectedYear}/month/${selectedMonth}`
+      );
+      const mutual_fund_result = await mutual_fund_response.json();
+
+      if (response.ok && mutual_fund_response.ok) {
         setIndicesData(result.indices);
         setCsvData(result.csvData);
         setCalculationDates(result.calculationDates);
 
-        // 🔹 Assign idx globally once
+        // Assign idx globally once for indices
         const allIndices = Object.values(allIndicesGroups).flat();
         const combined = [];
         allIndices.forEach((index, idx) => {
@@ -107,8 +120,69 @@ export default function MonthlyReport() {
           }
         });
         setCombinedData(combined);
+
+        let mfDataRaw = [];
+        if (
+          Array.isArray(mutual_fund_result) ||
+          Array.isArray(mutual_fund_result?.mutual_funds)
+        ) {
+          mfDataRaw = Array.isArray(mutual_fund_result)
+            ? mutual_fund_result
+            : mutual_fund_result.mutual_funds;
+        } else if (mutual_fund_result && typeof mutual_fund_result === "object") {
+          mfDataRaw = Object.keys(mutual_fund_result).map((k) => ({
+            name: k,
+            ...mutual_fund_result[k],
+          }));
+        }
+
+        // Map return periods to API keys and table headers dynamically
+        const periodMap = [
+          { period: "1M", key: "ret_1m" },
+          { period: "3M", key: "ret_3m" },
+          { period: "6M", key: "ret_6m" },
+          { period: "1Y", key: "ret_1y" },
+          { period: "2Y", key: "ret_2y" },
+          { period: "3Y", key: "ret_3y" },
+          { period: "5Y", key: "ret_5y" },
+          { period: "Since Inception", key: "ret_since_inception" },
+        ];
+
+        const mutualFundDataProcessed = mfDataRaw.map((mf, idx) => {
+          // Pick the name field (try common options)
+          const name =
+            mf.category_name ||
+            mf.MutualFund ||
+            mf.mutual_fund ||
+            mf.scheme_name ||
+            "-";
+
+          // Map only expected periods with fallback/dash if missing.
+          const mapped = periodMap.reduce((acc, pm) => {
+            // Only show as value (not object like {value: ...})
+            acc[pm.period] =
+              mf[pm.key] !== undefined && mf[pm.key] !== null
+                ? mf[pm.key]
+                : "N/A";
+            return acc;
+          }, {});
+
+          return {
+            idx: idx + 1,
+            name,
+            ...mapped,
+          };
+        });
+        console.log(mutualFundDataProcessed)
+
+        setMutualFundData(mutualFundDataProcessed);
+        // ------------ END MUTUAL FUND DATA MAPPING -------------
       } else {
-        setError(result.error || "Failed to fetch data");
+        setError(
+          result.error ||
+            mutual_fund_result?.error ||
+            "Failed to fetch data"
+        );
       }
     } catch (err) {
       setError(err.message);
@@ -195,6 +269,7 @@ export default function MonthlyReport() {
     setFileName("");
     setUploadMessage("");
     setCombinedData([]);
+    setMutualFundData([]);
   };
 
   // --- Sorting ---
@@ -241,10 +316,27 @@ export default function MonthlyReport() {
     });
   };
 
+  // Table search applies only to indices, not mutual funds (can extend if needed)
   const sortedData = getSortedData(combinedData);
   const filteredData = sortedData.filter((item) =>
     item.index.toLowerCase().includes(tableSearchTerm.toLowerCase())
   );
+
+  // Helper function to get % value or dash for any number field
+  const renderCellValue = (row, p) => {
+    if (row[p] && typeof row[p] === "object") {
+      return row[p].value !== "-" && row[p].value !== undefined && row[p].value !== null
+        ? row[p].value + "%"
+        : "N/A"
+    } else if (
+      row[p] !== null &&
+      row[p] !== undefined &&
+      row[p] !== "N/A"
+    ) {
+      return row[p] + "%";
+    }
+    return "-";
+  };
 
   return (
     <div className="p-6 min-h-screen">
@@ -313,6 +405,56 @@ export default function MonthlyReport() {
       {loading && <p>Loading...</p>}
       {error && <Alert variant="destructive">{error}</Alert>}
 
+      {/* --- Mutual Funds Table --- */}
+      {mutualFundData && mutualFundData.length > 0 && (
+        <div className="mb-10">
+          <h2 className="text-lg font-semibold mb-2">Mutual Fund Returns</h2>
+          <Table className="border bg-background rounded-lg mb-4">
+            <TableHeader className="bg-primary text-white font-bold">
+              <TableRow>
+                <TableHead
+                  className="bg-primary text-white"
+                >
+                  #
+                </TableHead>
+                <TableHead className="bg-primary text-white">
+                  Mutual Fund
+                </TableHead>
+                {returnPeriods.map((p) => (
+                  <TableHead key={p} className="bg-primary text-white">
+                    {p}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mutualFundData.map((row) => (
+                <TableRow key={row.name}>
+                  <TableCell>{row.idx}</TableCell>
+                  <TableCell>{row.name}</TableCell>
+                  {returnPeriods.map((p) => (
+                    <TableCell
+                      key={p}
+                      className={
+                        row[p] &&
+                        typeof row[p] === "object" &&
+                        row[p].value !== "-" &&
+                        parseFloat(row[p].value) < 0
+                          ? "text-red-500"
+                          : ""
+                      }
+                    >
+                      {renderCellValue(row, p)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* --- Indices Table --- */}
       {combinedData.length > 0 && (
         <div>
           <Input

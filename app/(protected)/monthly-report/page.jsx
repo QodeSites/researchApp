@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Papa from "papaparse";
 import formatDate from "@/utils/formatDate";
 
@@ -24,6 +24,10 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import allIndicesGroups from "@/utils/allIndicesGroups";
+
+// Loader2 and Checkbox and any other missing component import
+import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const PYTHON_BASE_URL =
   process.env.NODE_ENV === "production"
@@ -52,8 +56,15 @@ export default function MonthlyReport() {
 
   const [combinedData, setCombinedData] = useState([]); // fixed order data for indices
   const [mutualFundData, setMutualFundData] = useState([]); // for mutual funds
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [breakdowns, setBreakdowns] = useState({});
+  const [loadingBreakdown, setLoadingBreakdown] = useState({});
 
-  const returnPeriods = [
+  // Used but not defined in the original: 
+  const [selectedIndices, setSelectedIndices] = useState([]);
+  const [optionsExpandedRows, setOptionsExpandedRows] = useState({});
+  // For breakdowns table columns:
+  const columns = [
     "1M",
     "3M",
     "6M",
@@ -64,6 +75,8 @@ export default function MonthlyReport() {
     "5Y",
     "Since Inception",
   ];
+
+  const returnPeriods = columns;
 
   // --- Default Year/Month ---
   useEffect(() => {
@@ -77,15 +90,18 @@ export default function MonthlyReport() {
   // --- Fetch when year/month changes ---
   useEffect(() => {
     if (selectedYear && selectedMonth) fetchData();
+    // eslint-disable-next-line
   }, [selectedYear, selectedMonth]);
 
   // --- Fetch Data ---
   const fetchData = async () => {
     setLoading(true);
     setError(null);
+    setExpandedRows(new Set())
+    setBreakdowns({})
     try {
       const response = await fetch(
-        `/api/monthly-report?year=${selectedYear}&month=${selectedMonth}`
+        `${PYTHON_BASE_URL}/api/clienttracker/monthly-returns/year/${selectedYear}/month/${selectedMonth}`
       );
       const result = await response.json();
 
@@ -108,7 +124,7 @@ export default function MonthlyReport() {
             Object.keys(allIndicesGroups).find((g) =>
               allIndicesGroups[g].includes(index)
             ) || "Other";
-          const data = result.indices?.[index] || result.csvData?.[index];
+          const data = result.indices?.[index];
           if (data) {
             const merged = {
               idx: idx + 1,
@@ -129,7 +145,10 @@ export default function MonthlyReport() {
           mfDataRaw = Array.isArray(mutual_fund_result)
             ? mutual_fund_result
             : mutual_fund_result.mutual_funds;
-        } else if (mutual_fund_result && typeof mutual_fund_result === "object") {
+        } else if (
+          mutual_fund_result &&
+          typeof mutual_fund_result === "object"
+        ) {
           mfDataRaw = Object.keys(mutual_fund_result).map((k) => ({
             name: k,
             ...mutual_fund_result[k],
@@ -144,6 +163,7 @@ export default function MonthlyReport() {
           { period: "1Y", key: "ret_1y" },
           { period: "2Y", key: "ret_2y" },
           { period: "3Y", key: "ret_3y" },
+          { period: "4Y", key: "ret_4y" },
           { period: "5Y", key: "ret_5y" },
           { period: "Since Inception", key: "ret_since_inception" },
         ];
@@ -156,32 +176,25 @@ export default function MonthlyReport() {
             mf.mutual_fund ||
             mf.scheme_name ||
             "-";
-
           // Map only expected periods with fallback/dash if missing.
           const mapped = periodMap.reduce((acc, pm) => {
-            // Only show as value (not object like {value: ...})
             acc[pm.period] =
               mf[pm.key] !== undefined && mf[pm.key] !== null
                 ? mf[pm.key]
                 : "N/A";
             return acc;
           }, {});
-
           return {
             idx: idx + 1,
             name,
             ...mapped,
           };
         });
-        console.log(mutualFundDataProcessed)
 
         setMutualFundData(mutualFundDataProcessed);
-        // ------------ END MUTUAL FUND DATA MAPPING -------------
       } else {
         setError(
-          result.error ||
-            mutual_fund_result?.error ||
-            "Failed to fetch data"
+          result.error || mutual_fund_result?.error || "Failed to fetch data"
         );
       }
     } catch (err) {
@@ -189,6 +202,59 @@ export default function MonthlyReport() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- Row expansion and breakdown fetching ---
+  const toggleBreakdown = async (indexName) => {
+    setExpandedRows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(indexName)) newSet.delete(indexName);
+      else newSet.add(indexName);
+      return newSet;
+    });
+
+    if (!breakdowns[indexName] && !loadingBreakdown[indexName]) {
+      try {
+        setLoadingBreakdown((prev) => ({ ...prev, [indexName]: true }));
+        const payload = { code: indexName };
+        if (selectedYear && selectedMonth) {
+          const yearNum = Number(selectedYear);
+          const monthNum = Number(selectedMonth);
+          const lastDay = new Date(yearNum, monthNum, 0);
+          const pad = (v) => v.toString().padStart(2, "0");
+          payload.endDate = `${lastDay.getFullYear()}-${pad(lastDay.getMonth() + 1)}-${pad(lastDay.getDate())}`;
+        }
+        const res = await fetch(
+          `${PYTHON_BASE_URL}/api/clienttracker/returns_breakdown/true`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+        const json = await res.json();
+        setBreakdowns((prev) => ({ ...prev, [indexName]: json }));
+      } catch (err) {
+        console.error("Failed to load breakdown:", err);
+      } finally {
+        setLoadingBreakdown((prev) => ({ ...prev, [indexName]: false }));
+      }
+    }
+  };
+
+  // Muted: Not used in visible portion, but add for correctness:
+  const toggleIndexSelection = (index) => {
+    setSelectedIndices((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
+
+  // Handle expand/collapse for options segment breakdown
+  const toggleOptionsExpand = (key) => {
+    setOptionsExpandedRows((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
   // --- CSV Upload ---
@@ -235,7 +301,7 @@ export default function MonthlyReport() {
       data: parsedCsv,
     });
 
-    const xhr = new XMLHttpRequest();
+    const xhr = new window.XMLHttpRequest();
     xhr.open("POST", "/api/upload-csv");
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.upload.onprogress = (event) => {
@@ -282,7 +348,8 @@ export default function MonthlyReport() {
 
   const getSortedData = (dataArray) => {
     const { key, direction } = sortConfig;
-    if (!key || key === "#") return [...dataArray].sort((a, b) => a.idx - b.idx);
+    if (!key || key === "#")
+      return [...dataArray].sort((a, b) => a.idx - b.idx);
 
     return [...dataArray].sort((a, b) => {
       let aValue = a[key],
@@ -298,8 +365,10 @@ export default function MonthlyReport() {
       if (typeof bValue === "string" && bValue.includes("%"))
         bValue = parseFloat(bValue.replace("%", ""));
 
-      if (aValue === "-" || aValue === undefined || aValue === null) aValue = null;
-      if (bValue === "-" || bValue === undefined || bValue === null) bValue = null;
+      if (aValue === "-" || aValue === undefined || aValue === null)
+        aValue = null;
+      if (bValue === "-" || bValue === undefined || bValue === null)
+        bValue = null;
       if (aValue === null && bValue === null) return 0;
       if (aValue === null) return 1;
       if (bValue === null) return -1;
@@ -325,13 +394,16 @@ export default function MonthlyReport() {
   // Helper function to get % value or dash for any number field
   const renderCellValue = (row, p) => {
     if (row[p] && typeof row[p] === "object") {
-      return row[p].value !== "-" && row[p].value !== undefined && row[p].value !== null
+      return row[p].value !== "-" &&
+        row[p].value !== undefined &&
+        row[p].value !== null
         ? row[p].value + "%"
-        : "N/A"
+        : "-";
     } else if (
-      row[p] !== null &&
       row[p] !== undefined &&
-      row[p] !== "N/A"
+      row[p] !== null &&
+      row[p] !== "N/A" &&
+      row[p] !== "-"
     ) {
       return row[p] + "%";
     }
@@ -359,7 +431,6 @@ export default function MonthlyReport() {
             </SelectContent>
           </Select>
         </div>
-
         <div>
           <Label className="mb-1">Month</Label>
           <Select
@@ -392,7 +463,6 @@ export default function MonthlyReport() {
             </SelectContent>
           </Select>
         </div>
-
         {/* <Button onClick={fetchData} className="mt-4">
           Submit
         </Button>
@@ -412,11 +482,7 @@ export default function MonthlyReport() {
           <Table className="border bg-background rounded-lg mb-4">
             <TableHeader className="bg-primary text-white font-bold">
               <TableRow>
-                <TableHead
-                  className="bg-primary text-white"
-                >
-                  #
-                </TableHead>
+                <TableHead className="bg-primary text-white">#</TableHead>
                 <TableHead className="bg-primary text-white">
                   Mutual Fund
                 </TableHead>
@@ -436,10 +502,13 @@ export default function MonthlyReport() {
                     <TableCell
                       key={p}
                       className={
-                        row[p] &&
                         typeof row[p] === "object" &&
                         row[p].value !== "-" &&
                         parseFloat(row[p].value) < 0
+                          ? "text-red-500"
+                          : typeof row[p] === "string" &&
+                            !isNaN(parseFloat(row[p])) &&
+                            parseFloat(row[p]) < 0
                           ? "text-red-500"
                           : ""
                       }
@@ -473,6 +542,7 @@ export default function MonthlyReport() {
                 >
                   #
                 </TableHead>
+                <TableHead className="bg-primary text-white">Expand</TableHead>
                 <TableHead
                   onClick={() => handleSort("index")}
                   className="cursor-pointer bg-primary text-white"
@@ -495,7 +565,6 @@ export default function MonthlyReport() {
                       : " ▼"
                     : ""}
                 </TableHead>
-
                 {returnPeriods.map((p) => (
                   <TableHead
                     key={p}
@@ -514,32 +583,217 @@ export default function MonthlyReport() {
             </TableHeader>
             <TableBody>
               {filteredData.map((row) => (
-                <TableRow key={row.index}>
-                  <TableCell>{row.idx}</TableCell>
-                  <TableCell>{row.index}</TableCell>
-                  <TableCell>{row.group}</TableCell>
-                  {returnPeriods.map((p) => (
-                    <TableCell
-                      key={p}
-                      className={
-                        row[p] &&
-                        typeof row[p] === "object" &&
-                        row[p].value !== "-" &&
-                        parseFloat(row[p].value) < 0
-                          ? "text-red-500"
-                          : ""
-                      }
-                    >
-                      {row[p] && typeof row[p] === "object"
-                        ? row[p].value !== "-"
-                          ? row[p].value + "%"
-                          : "-"
-                        : row[p] !== "-"
-                        ? row[p] + "%"
-                        : "-"}
+                <React.Fragment key={row.index}>
+                  <TableRow>
+                    <TableCell>{row.idx}</TableCell>
+                    <TableCell>
+                      {allIndicesGroups["Qode Strategies"].includes(row.index) &&
+                        row.index !== "QGF-LIVE" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleBreakdown(row.index)}
+                          >
+                            {expandedRows.has(row.index) ? "▾" : "▸"}
+                          </Button>
+                        )}
                     </TableCell>
-                  ))}
-                </TableRow>
+                    <TableCell>{row.index}</TableCell>
+                    <TableCell>{row.group}</TableCell>
+                    {returnPeriods.map((p) => (
+                      <TableCell
+                        key={p}
+                        className={
+                          typeof row[p] === "object" &&
+                          row[p].value !== "-" &&
+                          parseFloat(row[p].value) < 0
+                            ? "text-red-500"
+                            : typeof row[p] === "string" &&
+                              !isNaN(parseFloat(row[p])) &&
+                              parseFloat(row[p]) < 0
+                            ? "text-red-500"
+                            : ""
+                        }
+                      >
+                        {renderCellValue(row, p)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {/* Breakdown rows */}
+                  {expandedRows.has(row.index) && (
+                    <>
+                      {loadingBreakdown[row.index] ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length + 5}
+                            className="text-center py-2"
+                          >
+                            <Loader2 className="h-4 w-4 animate-spin text-primary inline mr-2" />
+                            Loading breakdown...
+                          </TableCell>
+                        </TableRow>
+                      ) : breakdowns[row.index] &&
+                        Array.isArray(breakdowns[row.index].returns) ? (
+                        breakdowns[row.index].returns.map((seg, j) => {
+                          if (seg.label === "Options") {
+                            // Gather both "Dynamic Puts" and "Long Options" segments
+                            const subSegments = breakdowns[
+                              row.index
+                            ].returns.filter(
+                              (s) =>
+                                s.label === "Dynamic Puts" ||
+                                s.label === "Long Options"
+                            );
+                            return (
+                              <React.Fragment
+                                key={`${row.index}-segment-options-dropdown`}
+                              >
+                                <TableRow>
+                                  <TableCell />
+                                  <TableCell>
+                                    <div className="grid justify-items-center">
+                                      <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        className="px-[2px]"
+                                        onClick={() =>
+                                          toggleOptionsExpand(
+                                            `${row.index}-options`
+                                          )
+                                        }
+                                      >
+                                        {optionsExpandedRows[
+                                          `${row.index}-options`
+                                        ]
+                                          ? "▾"
+                                          : "▸"}
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-xs text-gray-600 italic">
+                                    Options
+                                  </TableCell>
+                                  <TableCell></TableCell>
+                                  {columns.map((col) => (
+                                    <TableCell
+                                      key={col}
+                                      className="text-xs text-gray-600 italic"
+                                    >
+                                      {seg.trailing &&
+                                      seg.trailing[col] !== undefined &&
+                                      seg.trailing[col] !== null
+                                        ? `${seg.trailing[col]}%`
+                                        : seg.metrics &&
+                                          seg.metrics[col] !== undefined &&
+                                          seg.metrics[col] !== null
+                                        ? `${seg.metrics[col]}%`
+                                        : "-"}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                                {optionsExpandedRows[`${row.index}-options`] &&
+                                  subSegments.map((subSeg, k) => (
+                                    <TableRow
+                                      key={`${row.index}-options-subrow-${k}`}
+                                      className="bg-muted/40 text-xs"
+                                    >
+                                      <TableCell />
+                                      <TableCell />
+                                      
+                                      <TableCell
+                                        className={`text-xs text-gray-600 italic pl-6`}
+                                      >
+                                        {subSeg.label}
+                                      </TableCell>
+                                      <TableCell></TableCell>
+                                      {columns.map((col) => (
+                                        <TableCell
+                                          className="text-xs text-gray-600 italic"
+                                          key={col}
+                                        >
+                                          {subSeg.trailing &&
+                                          subSeg.trailing[col] !== undefined &&
+                                          subSeg.trailing[col] !== null
+                                            ? `${subSeg.trailing[col]}%`
+                                            : subSeg.metrics &&
+                                              subSeg.metrics[col] !==
+                                                undefined &&
+                                              subSeg.metrics[col] !== null
+                                            ? `${subSeg.metrics[col]}%`
+                                            : "-"}
+                                        </TableCell>
+                                      ))}
+                                    </TableRow>
+                                  ))}
+                              </React.Fragment>
+                            );
+                          }
+
+                          if (
+                            seg.label === "Long Options" ||
+                            seg.label === "Dynamic Puts"
+                          ) {
+                            // These rows will be handled in the nested dropdown of Options, so skip them here
+                            return null;
+                          }
+
+                          // Render other breakdown segments as before
+                          return (
+                            <TableRow
+                              key={`${row.index}-segment-${j}`}
+                              className={`text-sm ${
+                                seg.label === "Dynamic Puts" ||
+                                seg.label === "Long Options"
+                                  ? "bg-muted/60"
+                                  : "bg-grey/60"
+                              }`}
+                            >
+                              <TableCell />
+                              <TableCell />
+
+                              <TableCell
+                                className={`text-xs text-gray-600 italic${
+                                  seg.label === "Dynamic Puts" ||
+                                  seg.label === "Long Options"
+                                    ? " pl-6"
+                                    : ""
+                                }`}
+                              >
+                                {seg.label || "-"}
+                              </TableCell>
+                              <TableCell></TableCell>
+                              {columns.map((col) => (
+                                <TableCell
+                                  className="text-xs text-gray-600 italic"
+                                  key={col}
+                                >
+                                  {seg.trailing &&
+                                  seg.trailing[col] !== undefined &&
+                                  seg.trailing[col] !== null
+                                    ? `${seg.trailing[col]}%`
+                                    : seg.metrics &&
+                                      seg.metrics[col] !== undefined &&
+                                      seg.metrics[col] !== null
+                                    ? `${seg.metrics[col]}%`
+                                    : "-"}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length + 5}
+                            className="text-center text-sm"
+                          >
+                            No breakdown data available.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )}
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>

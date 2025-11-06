@@ -95,8 +95,11 @@ export default function IndicesComparisonPage() {
     "9M",
     "1Y",
     "Drawdown",
+    "Since Inception",
+    "CDR",
+    "CDR_MDD"
   ];
-  const longTermCols = ["1Y", "2Y", "3Y", "4Y", "5Y", "CDR", "CDR_MDD"];
+  const longTermCols = ["1Y", "2Y", "3Y", "4Y", "5Y"];
 
   // --- Nested expands: for options row ---
   const [optionsExpandedRows, setOptionsExpandedRows] = useState({});
@@ -181,7 +184,7 @@ export default function IndicesComparisonPage() {
           payload.endDate = endDate;
         }
         const res = await fetch(
-          `${PYTHON_BASE_URL}/api/clienttracker/returns_breakdown`,
+          `${PYTHON_BASE_URL}/api/clienttracker/returns_breakdown/false`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -197,9 +200,6 @@ export default function IndicesComparisonPage() {
       }
     }
   };
-
-  // Fix: Remove debug
-  // console.log(breakdowns)
 
   const resetTable = () => {
     setSearchTerm("");

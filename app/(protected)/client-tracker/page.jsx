@@ -174,7 +174,7 @@ export default function ClientTracker() {
       try {
         setLoadingBreakdown((prev) => ({ ...prev, [accountCode]: true }));
         const res = await fetch(
-          `${PYTHON_BASE_URL}/api/clienttracker/returns_breakdown`,
+          `${PYTHON_BASE_URL}/api/clienttracker/returns_breakdown/false`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

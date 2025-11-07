@@ -312,7 +312,7 @@ export default function MailchimpCampaigns() {
       clicked: { bg: "#22c55e", text: "Clicked", icon: MousePointerClick },
       opened: { bg: "#3b82f6", text: "Opened", icon: Eye },
       not_opened: { bg: "#9ca3af", text: "Not Opened", icon: EyeOff },
-      bounced: { bg: "#ef4444", text: "Bounced", icon: XCircle },
+      // bounced: { bg: "#ef4444", text: "Bounced", icon: XCircle },
     };
 
     const config = statusConfig[status] || statusConfig.not_opened;
@@ -617,7 +617,7 @@ export default function MailchimpCampaigns() {
                 <p style={{ fontSize: "24px", fontWeight: "bold", color: "#9ca3af" }}>{recipientStats.not_opened}</p>
               </button>
 
-              <button
+              {/* <button
                 onClick={() => setRecipientFilter("bounced")}
                 style={{
                   padding: "16px",
@@ -636,7 +636,7 @@ export default function MailchimpCampaigns() {
                   </Tooltip>
                 </div>
                 <p style={{ fontSize: "24px", fontWeight: "bold", color: "#ef4444" }}>{recipientStats.bounced}</p>
-              </button>
+              </button> */}
             </div>
 
             {/* Total Opens Summary */}
@@ -992,7 +992,7 @@ export default function MailchimpCampaigns() {
                         <p style={{ fontSize: "12px", opacity: 0.6, marginBottom: "4px" }}>Clicks</p>
                         <p style={{ fontWeight: "bold" }}>{(analytics.clicks?.unique_subscriber_clicks ?? 0).toLocaleString()}</p>
                       </div>
-                      <div style={{ textAlign: "center" }}>
+                      {/* <div style={{ textAlign: "center" }}>
                         <p style={{ fontSize: "12px", opacity: 0.6, marginBottom: "4px" }}>Bounces</p>
                         <p style={{ fontWeight: "bold" }}>
                           {(
@@ -1000,7 +1000,7 @@ export default function MailchimpCampaigns() {
                             (analytics.bounces?.soft_bounces ?? 0)
                           ).toLocaleString()}
                         </p>
-                      </div>
+                      </div> */}
                     </div>
                   )}
                 </button>

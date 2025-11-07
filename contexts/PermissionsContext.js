@@ -22,8 +22,8 @@ export function PermissionsProvider({ children }) {
     { title: "MyQode Website Enquiries", url: "/myqode-website-enquiries", icon: "Inbox" },
     { title: "Stock", url: "/stock", icon: "Inbox" },
     { title: "Stock Details", url: "/stock-details", icon: "Inbox" },
-    { title: "Website Traffic", url: "/website-traffic", icon: "Inbox" },
-    { title: "Newsletter Analytics", url: "/newsletter-analytics", icon: "Inbox" },
+    { title: "Website Traffic", url: "/website-traffic", icon: "Eye" },
+    { title: "Newsletter Analytics", url: "/newsletter-analytics", icon: "BarChart" },
     { title: "Admin", url: "/admin", icon: "Settings" },
   ];
 

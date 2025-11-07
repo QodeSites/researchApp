@@ -33,6 +33,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.18",
     "file-saver": "^2.0.5",
+    "googleapis": "^164.1.0",
     "highcharts": "^12.4.0",
     "highcharts-react-official": "^3.2.2",
     "html2canvas": "^1.4.1",

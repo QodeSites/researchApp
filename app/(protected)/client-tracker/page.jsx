@@ -374,9 +374,9 @@ export default function ClientTracker() {
                   { label: "Code", key: "nuvama_code" },
                   { label: "Account", key: "account" },
                   { label: "Portfolio Value", key: "portfolio_value" },
-                  { label: "Cash", key: "cash" },
-                  { label: "Cash %", key: "cash_percentage" },
-                  { label: "Derivatives %", key: "derivatives_percentage" },
+                  // { label: "Cash", key: "cash" },
+                  // { label: "Cash %", key: "cash_percentage" },
+                  // { label: "Derivatives %", key: "derivatives_percentage" },
                 ].map((col) => (
                   <TableHead
                     key={col.key}
@@ -410,13 +410,13 @@ export default function ClientTracker() {
                     <TableCell>{item.nuvama_code}</TableCell>
                     <TableCell>{item.account}</TableCell>
                     <TableCell>{formatNumber(item.portfolio_value)}</TableCell>
-                    <TableCell>{formatNumber(item.cash)}</TableCell>
+                    {/* <TableCell>{formatNumber(item.cash)}</TableCell>
                     <TableCell>
                       {formatNumber(item.cash_percentage, "%")}
                     </TableCell>
                     <TableCell>
                       {formatNumber(item.derivatives_percentage, "%")}
-                    </TableCell>
+                    </TableCell> */}
                   </TableRow>
                 ))
               ) : (
